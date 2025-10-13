@@ -106,7 +106,7 @@ client.login(TOKEN);
 // Express 서버
 const app = express();
 app.get('/', (req, res) => res.send('Bot is alive!'));
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Web server running on port ${PORT}`));
 
 // Self-ping
