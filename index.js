@@ -32,7 +32,7 @@ client.once('clientReady', async () => {
 
     // "플레이중" 상태 설정
     client.user.setPresence({
-        activities: [{ name: 'Lost Ark', type: ActivityType.Playing }],
+        activities: [{ name: '🎮 Lost Ark', type: ActivityType.Playing }],
         status: 'idle', // online, idle, dnd, invisible
     });
 
