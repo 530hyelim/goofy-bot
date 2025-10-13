@@ -27,7 +27,7 @@ let reactionRoles = {
 const description = '🎮 게이머\n💼 취준스터디';
 
 // 봇 로그인
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`🤖 로그인 완료: ${client.user.tag}`);
 
     // "플레이중" 상태 설정
