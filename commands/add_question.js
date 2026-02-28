@@ -1,9 +1,7 @@
 import 'dotenv/config';
 import { supabase } from '../index.js';
-import { sendError } from '../sendError.js';
-import { upsertUserScore } from '../userScore.js';
 import { EmbedBuilder, ActionRowBuilder, SelectMenuBuilder } from 'discord.js';
-import { setUserCollector, clearUserCollector } from '../userCollectors.js';
+import { setUserCollector, clearUserCollector, sendError, upsertUserScore } from '../commonFunc.js';
 
 export default {
     name: 'add_question',

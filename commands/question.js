@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { supabase } from '../index.js';
 import { ActionRowBuilder, SelectMenuBuilder } from 'discord.js';
-import { setUserCollector, clearUserCollector } from '../userCollectors.js';
+import { setUserCollector, clearUserCollector } from '../commonFunc.js';
 
 let correctAnswer;
 

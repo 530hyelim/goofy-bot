@@ -1,7 +1,7 @@
 import cron from 'node-cron';
 import { client } from './index.js';
 import { supabase } from './index.js';
-import { sendError } from './sendError.js';
+import { sendError } from './commonFunc.js';
 import { getRankString } from './commands/rank.js';
 
 export function startCrons() {

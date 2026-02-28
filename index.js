@@ -1,8 +1,6 @@
 import fs from 'fs';
-import cron from 'node-cron';
 import { startCrons } from './crons.js';
-import { sendError } from './sendError.js';
-import { handleCommand } from './commandHandler.js';
+import { handleCommand } from './commonFunc.js';
 import { createClient } from '@supabase/supabase-js';
 import { Client, GatewayIntentBits, Partials, EmbedBuilder, ActivityType, Collection } from 'discord.js';
 import dotenv from 'dotenv';

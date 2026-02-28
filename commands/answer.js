@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { upsertUserScore } from '../userScore.js';
+import { upsertUserScore } from '../commonFunc.js';
 import { getCorrectAnswer, resetCorrectAnswer } from './question.js';
 
 export default {
