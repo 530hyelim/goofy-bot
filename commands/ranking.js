@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { supabase } from '../index.js';
-import { EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { sendError } from '../commonFunc.js';
 
 export async function getRankString() {
     const { data: ranking, error: qErr } = await supabase
@@ -31,22 +32,18 @@ export async function getRankString() {
 }
 
 export default {
-    name: 'rank',
-    description: '랭킹 조회',
-    async execute(message, args) {
+    data: new SlashCommandBuilder()
+        .setName('ranking')
+        .setDescription('랭킹 조회'),
+
+    async execute(interaction) {
         try {
             const result = await getRankString();
-            return message.reply(result);
+            return interaction.reply(result);
         } catch (err) {
-            const logChannel = message.guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
-            if (logChannel) {
-                logChannel.send(`rank.js Error: ${err?.stack || err}`);
-            } else {
-                const members = await message.guild.members.fetch();
-                const targetUsers = members.filter(member => member.permissions.has(process.env.ROLE_ADMIN_ID));
-                for (const [id, member] of targetUsers) {
-                    await member.send(`rank.js Error: ${err?.stack || err}`);
-                }
+            await sendError(`rank.js Error: ${err?.stack || err}`);
+            if (!interaction.replied) {
+                await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 });
             }
         }
     }

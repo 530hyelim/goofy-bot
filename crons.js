@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { client } from './index.js';
 import { supabase } from './index.js';
 import { sendError } from './commonFunc.js';
-import { getRankString } from './commands/rank.js';
+import { getRankString } from './commands/ranking.js';
 
 export function startCrons() {
     const codingChannel = client.channels.cache.get(process.env.CODING_CHANNEL_ID);

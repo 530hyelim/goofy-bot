@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { client } from './index.js';
 import { supabase } from './index.js';
+import { getCorrectAnswer, resetCorrectAnswer } from './commands/question.js';
 
 const userCollectors = new Map();
 
@@ -14,21 +15,70 @@ export function clearUserCollector(userId) {
     userCollectors.delete(userId);
 }
 
-export async function handleCommand(message, client) {
+export async function handleCommand(message) {
     if (message.author.bot) return;
-    if (!message.content.startsWith('!')) return;
+    const content = message.content.trim();
+    const correctAnswer = getCorrectAnswer();
+    if (!correctAnswer) return;
 
-    const args = message.content.slice(1).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
+    if (content.startsWith('.힌트')) {
+        var hint = correctAnswer.answer.replace(/[0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, '●');
+        return message.reply(`힌트: ${hint}`);
+    }
 
-    const command = client.commands.get(commandName);
-    if (!command) return;
+    if (content.startsWith('.정답')) {
+        const userAnswer = content.slice(3).trim();
+        if (!userAnswer) return;
 
-    try {
-        await command.execute(message, args);
-    } catch (error) {
-        console.error(error);
-        message.reply('명령어 실행 중 오류가 발생했습니다.');
+        try {
+            let 정답;
+            const answerArr = correctAnswer.answer.replace(/[\s\W_]+/g, ' ').split(' ');
+
+            switch(correctAnswer.type) {
+                case 1: // 일치
+                    if (userAnswer == correctAnswer.answer.trim()) 정답 = true;
+                    else 정답 = false;
+                    break;
+                case 2: // 포함
+                    정답 = true;
+                    answerArr.forEach(answer => {
+                        if (!userAnswer.includes(answer)) 정답 = false;
+                    });
+                    break;
+                case 3: // 동순
+                    정답 = true;
+                    let order = new Array();
+                    answerArr.forEach(answer => {
+                        order.push(userAnswer.indexOf(answer));
+                    });
+                    for (let i = 0; i < order.length - 1; i++) {
+                        if (order[i] > order[i + 1]) 정답 = false;
+                    }
+                    break;
+            }
+
+            if (!정답) return message.reply('땡!!!!');
+            resetCorrectAnswer();
+
+            // 카테고리의 answer_point 값 조회
+            const { data: categoryData } = await supabase
+                .from('category')
+                .select('answer_point')
+                .eq('cate_no', correctAnswer.category)
+                .single();
+            
+            const answerPoint = categoryData?.answer_point;
+            var sendMessage = `${message.author.username}님 정답! `;
+
+            if (answerPoint) {
+                await upsertUserScore(message.author.id, message.author.username, answerPoint);
+                sendMessage += `+${answerPoint} 포인트 💯`;
+            }
+            return message.reply(sendMessage);
+
+        } catch (err) {
+            await sendError(`answer Error: ${err?.stack || err}`);
+        }
     }
 }
 

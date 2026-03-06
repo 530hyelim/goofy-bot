@@ -1,14 +1,16 @@
 import 'dotenv/config';
 import { supabase } from '../index.js';
-import { ActionRowBuilder, SelectMenuBuilder } from 'discord.js';
-import { setUserCollector, clearUserCollector } from '../commonFunc.js';
+import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+import { setUserCollector, clearUserCollector, sendError } from '../commonFunc.js';
 
 let correctAnswer;
 
 export default {
-    name: 'question',
-    description: '문제 출제',
-    async execute(message, args) {
+    data: new SlashCommandBuilder()
+        .setName('question')
+        .setDescription('문제 출제'),
+
+    async execute(interaction) {
         try {
             // 카테고리 선택
             const { data: categories, error: categoryError } = await supabase.from('category').select('*');
@@ -21,53 +23,76 @@ export default {
                 label: category.cate_name,
             }));
 
-            const row = new ActionRowBuilder().addComponents(
-                new SelectMenuBuilder()
-                    .setCustomId('categorySelect')
+            const categoryMenu = new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId('questionCategorySelect')
                     .setPlaceholder('카테고리를 선택하세요!')
                     .addOptions(categoryOptions)
             );
 
-            await message.reply({ components: [row] });
-            const filter = (interaction) => interaction.user.id === message.author.id;
+            // 취소 버튼 생성
+            const cancelButton = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('cancelQuestion')
+                    .setLabel('취소')
+                    .setStyle(ButtonStyle.Danger)
+            );
 
-            const collector = message.channel.createMessageComponentCollector({
-                filter,
+            await interaction.reply({ content: '문제 카테고리를 선택하세요.', components: [categoryMenu, cancelButton], flags: 64 });
+
+            // 카테고리 선택 콜렉터 생성
+            const collector = interaction.channel.createMessageComponentCollector({
+                filter: (i) => i.user.id === interaction.user.id && (i.customId === 'questionCategorySelect' || i.customId === 'cancelQuestion'),
+                max: 1,
+                time: 60000
             });
-            setUserCollector(message.author.id, collector);
+            setUserCollector(interaction.user.id, collector);
 
-            // 문제 가져오기
-            collector.on('collect', async (interaction) => {
-                if (interaction.customId === 'categorySelect') {
+            // 카테고리 선택 또는 취소 버튼 클릭 시
+            collector.on('collect', async (selectInteraction) => {
+                try {
+                    if (selectInteraction.customId === 'cancelQuestion') {
+                        await selectInteraction.update({ content: '문제 출제가 취소되었습니다.', components: [] });
+                        return;
+                    }
+
+                    const selectedCategory = selectInteraction.values[0];
+
+                    // 해당 카테고리의 문제 가져오기
                     const { data: questions, error: qErr } = await supabase
-                        .from('questions').select('*').eq('category', interaction.values[0]);
+                        .from('questions')
+                        .select('*')
+                        .eq('category', selectedCategory);
 
                     if (qErr) throw new Error(qErr);
-                    if (!questions || questions.length === 0) return interaction.reply("문제가 없습니다. !add_question 커맨드를 통해 문제를 등록해주세요!");
+                    if (!questions || questions.length === 0) {
+                        await selectInteraction.update({ content: '문제가 없습니다. /register 커맨드를 통해 문제를 등록해주세요!', components: [] });
+                        return;
+                    }
 
+                    // 랜덤 문제 선택
                     const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
                     correctAnswer = {
                         type: randomQuestion.answer_type,
-                        answer: randomQuestion.answer_text, 
+                        answer: randomQuestion.answer_text,
+                        category: selectedCategory,
                     };
-                    return interaction.reply(randomQuestion.question_text);
+
+                    await selectInteraction.update({ content: '문제가 출제되었습니다.', components: [] });
+                    await interaction.channel.send("```" + randomQuestion.question_text + "```");
+
+                } catch (err) {
+                    await sendError(`question.js Error: ${err?.stack || err}`);
                 }
             });
             collector.on('end', () => {
-                clearUserCollector(message.author.id);
+                clearUserCollector(interaction.user.id);
             });
 
         } catch (err) {
-            const logChannel = message.guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
-            if (logChannel) {
-                logChannel.send(`question.js Error: ${err?.stack || err}`);
-            } else {
-                const members = await message.guild.members.fetch();
-                const targetUsers = members.filter(member => member.permissions.has(process.env.ROLE_ADMIN_ID));
-
-                for (const [id, member] of targetUsers) {
-                    await member.send(`question.js Error: ${err?.stack || err}`);
-                }
+            await sendError(`question.js Error: ${err?.stack || err}`);
+            if (!interaction.replied) {
+                await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 });
             }
         }
     }

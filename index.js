@@ -2,8 +2,9 @@ import fs from 'fs';
 import express from 'express';
 import { startCrons } from './crons.js';
 import { sendError, handleCommand } from './commonFunc.js';
+import { initReactionRoles, handleReaction } from './reactionRoles.js';
 import { createClient } from '@supabase/supabase-js';
-import { Client, GatewayIntentBits, Partials, EmbedBuilder, ActivityType, Collection } from 'discord.js';
+import { Client, GatewayIntentBits, Partials, ActivityType, Collection, REST, Routes } from 'discord.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -17,76 +18,33 @@ const client = new Client({
     ],
     partials: [Partials.Message, Partials.Channel, Partials.Reaction],
 });
-client.commands = new Collection();
+client.slashCommands = new Collection();
 
 // 설정
 const PORT = process.env.PORT || 10000;
 const TOKEN = process.env.TOKEN;
 const GUILD_ID = process.env.GUILD_ID;
-const ROLE_CHANNEL_ID = process.env.ROLE_CHANNEL_ID;
-const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
-let roleMessageId = process.env.ROLE_MESSAGE_ID || '';
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
-// 기본 이모지 → 역할 매핑
-let reactionRoles = {
-    '🎮': process.env.ROLE_GAME_ID,
-    '💼': process.env.ROLE_STUDY_ID,
-};
-const description = '🎮 게이머\n💼 취준스터디';
-
-// 봇 로그인
 client.once('clientReady', async () => {
     sendError(`🤖 로그인 완료: ${client.user.tag} (PORT: ${process.env.PORT})`);
 
-    // "플레이중" 상태 설정
     client.user.setPresence({
         activities: [{ name: '🎮 Lost Ark', type: ActivityType.Playing }],
-        status: 'idle', // online, idle, dnd, invisible
+        status: 'online',
     });
 
-    const guild = client.guilds.cache.get(GUILD_ID);
-    if (!guild) return sendError('⚠️ 서버를 찾을 수 없습니다.');
-
-    const channel = guild.channels.cache.get(ROLE_CHANNEL_ID);
-    if (!channel) return sendError('⚠️ 역할 선택 채널을 찾을 수 없습니다.');
-
-    // 역할 선택 메시지 생성 또는 가져오기
-    let message;
-    if (roleMessageId) {
-        message = await channel.messages.fetch(roleMessageId).catch(() => null);
-    }
-
-    if (!message) {
-        const embed = new EmbedBuilder()
-            .setTitle('아래 이모지를 눌러 원하는 역할 (중복 가능)을 선택하세요!')
-            .setDescription(description)
-            .setColor('#5865F2');
-
-        message = await channel.send({ embeds: [embed] });
-
-        // 모든 이모지 추가
-        for (const emoji of Object.keys(reactionRoles)) {
-            await message.react(emoji);
-        }
-
-        roleMessageId = message.id;
-        sendError(`✅ 역할 선택 메시지 생성 완료 (ID: ${roleMessageId})`);
-    } else {
-        sendError(`✅ 기존 역할 선택 메시지 사용 (ID: ${roleMessageId})`);
-    }
-
-    await loadCommands(); 
+    await initReactionRoles(client);
+    await loadCommands();
     startCrons();
 });
 
 // 새 유저 입장 시 안내
 client.on('guildMemberAdd', async (member) => {
     try {
-        // DM으로 안내
         await member.send(
             `🎉 KH 자바스터디 G반 서버에 오신 것을 환영합니다!\n` +
-            `역할 선택은 <#${ROLE_CHANNEL_ID}> 채널에서 가능합니다.\n` +
+            `역할 선택은 <#${process.env.ROLE_CHANNEL_ID}> 채널에서 가능합니다.\n` +
             `아래 메시지에서 원하는 역할의 이모지를 눌러주세요!`
         );
     } catch (err) {
@@ -94,48 +52,60 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
-// 리액션 역할 부여 / 제거 + 로그
-async function handleReaction(reaction, user, add) {
-    if (user.bot) return;
-    if (reaction.partial) await reaction.fetch();
-
-    const roleId = reactionRoles[reaction.emoji.name];
-    if (!roleId) return;
-
-    const guild = reaction.message.guild;
-    const member = await guild.members.fetch(user.id);
-
-    if (add) await member.roles.add(roleId);
-    else await member.roles.remove(roleId);
-
-    // 로그 전송
-    const logChannel = guild.channels.cache.get(LOG_CHANNEL_ID);
-    if (logChannel) {
-        const action = add ? '역할 부여' : '역할 제거';
-        logChannel.send(`${add ? '✅' : '❌'} **${member.user.tag}**님이 ${reaction.emoji.name}를 ${action}했습니다.`);
-    }
-}
-
 async function loadCommands() { 
     const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js')); 
+    const slashCommandsData = [];
+
     for (const file of commandFiles) { 
-        try { const { default: command } = await import(`./commands/${file}`); 
-            client.commands.set(command.name, command); 
+        try { 
+            const { default: command } = await import(`./commands/${file}`); 
+            if (command.data) {
+                client.slashCommands.set(command.data.name, command);
+                slashCommandsData.push(command.data.toJSON());
+            }
         } catch (error) { 
-            sendError(`⚠️ 오류 발생: ${file} 명령어 로딩 중`, error); 
+            sendError(`⚠️ ${file} 명령어 로딩 오류:`, error); 
         } 
-    } 
-    sendError("✅ 모든 명령어가 로드되었습니다.");
+    }
+
+    if (slashCommandsData.length === 0) return;
+    const rest = new REST({ version: '10' }).setToken(TOKEN);
+
+    try {
+        await rest.put(
+            Routes.applicationGuildCommands(client.user.id, GUILD_ID),
+            { body: slashCommandsData }
+        );
+    } catch (error) {
+        sendError(`⚠️ 슬래시 커맨드 등록 오류:`, error);
+    }
 }
 
 client.on('messageCreate', (message) => handleCommand(message, client));
 client.on('messageReactionAdd', (reaction, user) => handleReaction(reaction, user, true));
 client.on('messageReactionRemove', (reaction, user) => handleReaction(reaction, user, false));
 
+client.on('interactionCreate', async (interaction) => {
+    if (interaction.isChatInputCommand()) {
+        const command = client.slashCommands.get(interaction.commandName);
+        if (!command) return;
+        try {
+            await command.execute(interaction);
+        } catch (error) {
+            sendError(`⚠️ 슬래시 커맨드 오류: ${error?.stack || error}`);
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({ content: '오류가 발생했습니다.', flags: 64 });
+            } else {
+                await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 });
+            }
+        }
+    }
+});
+
 client.login(TOKEN);
 
 const app = express();
 app.get('/', (req, res) => res.send('Bot is alive!'));
-app.listen(PORT, () => sendError(`Web server running!`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Web server running!`));
 
 export {supabase, client} ;
