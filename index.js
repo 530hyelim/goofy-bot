@@ -1,7 +1,7 @@
 import fs from 'fs';
 import express from 'express';
 import { startCrons } from './crons.js';
-import { sendError, handleCommand, upsertGuildConfig } from './commonFunc.js';
+import { sendError, handleCommand, upsertGuildConfig, getGuildConfig } from './commonFunc.js';
 import { initReactionRoles, handleReaction } from './reactionRoles.js';
 import { handleSetupInteraction } from './commands/setup.js';
 import { handleVoiceStateUpdate } from './voiceTracker.js';
@@ -32,7 +32,6 @@ client.once('clientReady', async () => {
     sendError(`🤖 로그인 완료: ${client.user.tag} (PORT: ${process.env.PORT})`);
 
     client.user.setPresence({
-        activities: [{ name: '🎮 Lost Ark', type: ActivityType.Playing }],
         status: 'online',
     });
 
@@ -54,11 +53,18 @@ client.on('guildCreate', async (guild) => {
 // 새 유저 입장 시 안내
 client.on('guildMemberAdd', async (member) => {
     try {
-        await member.send(
-            `🎉 ${member.guild.name} 서버에 오신 것을 환영합니다!`
-        );
+        const config = await getGuildConfig(member.guild.id);
+        let welcomeMessage = `🎉 **${member.guild.name}** 서버에 오신 것을 환영합니다!`;
+        
+        if (config?.role_channel_id && config?.role_message_id) {
+            const roleLink = `https://discord.com/channels/${member.guild.id}/${config.role_channel_id}/${config.role_message_id}`;
+            welcomeMessage += `\n\n🎭 [여기를 클릭](${roleLink})하여 역할을 선택해주세요!`;
+        } else if (config?.role_channel_id) {
+            welcomeMessage += `\n\n🎭 <#${config.role_channel_id}> 채널에서 역할을 선택해주세요!`;
+        }
+        await member.send(welcomeMessage);
     } catch (err) {
-        sendError(`⚠️ ${member.user.tag}님에게 DM을 보낼 수 없습니다.`);
+        sendError(`⚠️ ${member.user.tag}님에게 DM을 보낼 수 없습니다.`, member.guild.id);
     }
 });
 

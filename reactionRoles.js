@@ -100,6 +100,15 @@ export async function initReactionRoles(client) {
             const config = await getGuildConfig(guild.id);
             if (!config?.role_channel_id) continue;
 
+            if (config.role_message_id) {
+                const channel = guild.channels.cache.get(config.role_channel_id);
+                if (channel) {
+                    const message = await channel.messages.fetch(config.role_message_id).catch(() => null);
+                    if (message) {
+                        continue;
+                    }
+                }
+            }
             await updateRoleMessage(guild.id);
         } catch (err) {
             sendError(`⚠️ ${guild.name} 역할 초기화 오류: ${err?.stack || err}`);

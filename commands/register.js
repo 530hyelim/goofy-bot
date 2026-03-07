@@ -11,16 +11,6 @@ export default {
     async execute(interaction) {
         const author = interaction.user;
 
-        // 관리자 권한 확인
-        // let admins = interaction.guild.members.cache.filter(member => member.permissions.has(process.env.ROLE_ADMIN_ID));
-        // if (!admins || admins.size === 0) {
-        //     const members = await interaction.guild.members.fetch();
-        //     admins = members.filter(member => member.permissions.has(process.env.ROLE_ADMIN_ID));
-        // }
-        // if (!admins.some(admin => admin.id === author.id)) {
-        //     return interaction.reply({ content: "권한이 없습니다!", flags: 64 });
-        // }
-
         try {
             // 카테고리 불러오기
             const { data: categories, error: selectError } = await supabase.from('category').select('*');
