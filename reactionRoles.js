@@ -1,72 +1,153 @@
 import 'dotenv/config';
 import { EmbedBuilder } from 'discord.js';
-import { sendError } from './commonFunc.js';
+import { supabase, client } from './index.js';
+import { sendError, getGuildConfig, upsertGuildConfig, clearGuildConfigCache } from './commonFunc.js';
 
-// 이모지 → 역할 매핑
-const reactionRoles = {
-    '🎮': process.env.ROLE_GAME_ID,
-    '💼': process.env.ROLE_STUDY_ID,
-};
-const description = '🎮 게이머\n💼 취준스터디';
+const reactionRolesCache = new Map();
 
-let roleMessageId = process.env.ROLE_MESSAGE_ID || '';
+async function getReactionRolesData(guildId) {
+    const { data, error } = await supabase
+        .from('reaction_roles')
+        .select('emoji, role_id, description')
+        .eq('guild_id', guildId);
 
-/**
- * 역할 선택 메시지 초기화
- */
-export async function initReactionRoles(client) {
-    const guild = client.guilds.cache.get(process.env.GUILD_ID);
-    if (!guild) return sendError('⚠️ 서버를 찾을 수 없습니다.');
+    if (error) throw error;
+    return data || [];
+}
 
-    const channel = guild.channels.cache.get(process.env.ROLE_CHANNEL_ID);
-    if (!channel) return sendError('⚠️ 역할 선택 채널을 찾을 수 없습니다.');
-
-    // 역할 선택 메시지 생성 또는 가져오기
-    let message;
-    if (roleMessageId) {
-        message = await channel.messages.fetch(roleMessageId).catch(() => null);
+async function getReactionRoles(guildId) {
+    if (reactionRolesCache.has(guildId)) {
+        return reactionRolesCache.get(guildId);
     }
 
-    if (!message) {
-        const embed = new EmbedBuilder()
-            .setTitle('아래 이모지를 눌러 원하는 역할 (중복 가능)을 선택하세요!')
-            .setDescription(description)
-            .setColor('#5865F2');
+    const data = await getReactionRolesData(guildId);
+    const rolesMap = {};
+    for (const row of data) {
+        rolesMap[row.emoji] = row.role_id;
+    }
 
-        message = await channel.send({ embeds: [embed] });
+    reactionRolesCache.set(guildId, rolesMap);
+    return rolesMap;
+}
 
-        // 모든 이모지 추가
-        for (const emoji of Object.keys(reactionRoles)) {
-            await message.react(emoji);
-        }
-
-        roleMessageId = message.id;
-        sendError(`✅ 역할 선택 메시지 생성 완료 (ID: ${roleMessageId})`);
+export function clearReactionRolesCache(guildId) {
+    if (guildId) {
+        reactionRolesCache.delete(guildId);
     } else {
-        sendError(`✅ 기존 역할 선택 메시지 사용 (ID: ${roleMessageId})`);
+        reactionRolesCache.clear();
+    }
+}
+
+function buildRoleEmbed(rolesData) {
+    const description = rolesData.map(r => `${r.emoji} ${r.description || '역할'}`).join('\n');
+    
+    return new EmbedBuilder()
+        .setTitle('아래 이모지를 눌러 원하는 역할을 선택하세요!')
+        .setDescription(description || '설정된 역할이 없습니다.')
+        .setColor('#5865F2');
+}
+
+export async function updateRoleMessage(guildId) {
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild) return;
+
+    const config = await getGuildConfig(guildId);
+    if (!config?.role_channel_id) return;
+
+    const channel = guild.channels.cache.get(config.role_channel_id);
+    if (!channel) return;
+
+    clearReactionRolesCache(guildId);
+    const rolesData = await getReactionRolesData(guildId);
+    const embed = buildRoleEmbed(rolesData);
+
+    let message = null;
+    if (config.role_message_id) {
+        message = await channel.messages.fetch(config.role_message_id).catch(() => null);
+    }
+
+    if (message) {
+        await message.edit({ embeds: [embed] });
+        
+        await message.reactions.removeAll();
+        for (const role of rolesData) {
+            await message.react(role.emoji);
+        }
+        
+        sendError(`✅ ${guild.name}: 역할 메시지 업데이트 완료`, guildId);
+    } else {
+        message = await channel.send({ embeds: [embed] });
+        
+        for (const role of rolesData) {
+            await message.react(role.emoji);
+        }
+        
+        clearGuildConfigCache(guildId);
+        await upsertGuildConfig(guildId, guild.name, { role_message_id: message.id });
+        
+        sendError(`✅ ${guild.name}: 새 역할 메시지 생성 (ID: ${message.id})`, guildId);
+    }
+
+    return message;
+}
+
+/**
+ * 역할 선택 메시지 초기화 (모든 길드)
+ */
+export async function initReactionRoles(client) {
+    for (const guild of client.guilds.cache.values()) {
+        try {
+            const config = await getGuildConfig(guild.id);
+            if (!config?.role_channel_id) continue;
+
+            await updateRoleMessage(guild.id);
+        } catch (err) {
+            sendError(`⚠️ ${guild.name} 역할 초기화 오류: ${err?.stack || err}`);
+        }
     }
 }
 
 /**
- * 리액션 역할 부여 / 제거
+ * 리액션 역할 토글 (이모지 추가 시에만 처리, 토글 후 반응 제거)
  */
 export async function handleReaction(reaction, user, add) {
     if (user.bot) return;
+    if (!add) return;
+    
     if (reaction.partial) await reaction.fetch();
 
+    const guild = reaction.message.guild;
+    const config = await getGuildConfig(guild.id);
+    
+    if (config?.role_message_id !== reaction.message.id) return;
+    
+    const reactionRoles = await getReactionRoles(guild.id);
+    if (!reactionRoles || Object.keys(reactionRoles).length === 0) return;
+    
     const roleId = reactionRoles[reaction.emoji.name];
     if (!roleId) return;
 
-    const guild = reaction.message.guild;
     const member = await guild.members.fetch(user.id);
 
-    if (add) await member.roles.add(roleId);
-    else await member.roles.remove(roleId);
+    try {
+        const hasRole = member.roles.cache.has(roleId);
+        
+        if (hasRole) {
+            await member.roles.remove(roleId);
+        } else {
+            await member.roles.add(roleId);
+        }
 
-    // 로그 전송
-    const logChannel = guild.channels.cache.get(process.env.LOG_CHANNEL_ID);
-    if (logChannel) {
-        const action = add ? '역할 부여' : '역할 제거';
-        logChannel.send(`${add ? '✅' : '❌'} **${member.user.tag}**님이 ${reaction.emoji.name}를 ${action}했습니다.`);
+        await reaction.users.remove(user.id);
+
+        if (config?.log_channel_id) {
+            const logChannel = guild.channels.cache.get(config.log_channel_id);
+            if (logChannel) {
+                const action = hasRole ? '역할 해제' : '역할 부여';
+                logChannel.send(`${hasRole ? '❌' : '✅'} **${member.user.tag}**님이 ${reaction.emoji.name} ${action}`);
+            }
+        }
+    } catch (err) {
+        sendError(`역할 토글 오류: ${err?.stack || err}`, guild.id);
     }
 }

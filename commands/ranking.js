@@ -1,16 +1,19 @@
 import 'dotenv/config';
-import { supabase } from '../index.js';
+import { supabase, client } from '../index.js';
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
 import { sendError } from '../commonFunc.js';
 
-export async function getRankString() {
+export async function getRankString(guildId) {
     const { data: ranking, error: qErr } = await supabase
         .from('users')
         .select('*')
+        .eq('guild_id', guildId)
         .order('total_score', { ascending: false });
 
     if (qErr) throw new Error(qErr);
     if (!ranking || ranking.length === 0) throw new Error('랭킹 데이터가 없습니다.');
+
+    const guild = client.guilds.cache.get(guildId);
 
     let result = '';
     for (let i = 0; i < ranking.length; i++) {
@@ -20,7 +23,16 @@ export async function getRankString() {
             case 2: result += `🥉등 : `; break;
             default: result += `${i+1}등 : `;
         }
-        result += `${ranking[i].username} - ${ranking[i].total_score}점\n`;
+        
+        let displayName = ranking[i].username;
+        if (guild) {
+            try {
+                const member = await guild.members.fetch(ranking[i].user_id);
+                displayName = member?.displayName || ranking[i].username;
+            } catch (e) {}
+        }
+        
+        result += `${displayName} - ${ranking[i].total_score}점\n`;
     }
 
     const embed = new EmbedBuilder()
@@ -38,7 +50,7 @@ export default {
 
     async execute(interaction) {
         try {
-            const result = await getRankString();
+            const result = await getRankString(interaction.guild.id);
             return interaction.reply(result);
         } catch (err) {
             await sendError(`rank.js Error: ${err?.stack || err}`);

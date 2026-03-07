@@ -211,10 +211,11 @@ async function showCriteriaSelect(modalInteraction, originalInteraction, selecte
             
             const addPoint = categoryData?.add_point;
             var sendMessage = "문제가 성공적으로 추가되었습니다! ";
+            const displayName = originalInteraction.member?.displayName || originalInteraction.user.username;
 
             if (addPoint) {
-                await upsertUserScore(originalInteraction.user.id, originalInteraction.user.username, addPoint);
-                sendMessage += `${originalInteraction.user.username}님 +${addPoint} 포인트 👏`;
+                await upsertUserScore(originalInteraction.guild.id, originalInteraction.user.id, displayName, addPoint);
+                sendMessage += `${displayName}님 +${addPoint} 포인트 👏`;
             }
             await criteriaInteraction.update({ content: '채점 기준이 선택되었습니다.', components: [] });
             await originalInteraction.channel.send({ content: sendMessage });

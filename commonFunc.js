@@ -4,6 +4,56 @@ import { supabase } from './index.js';
 import { getCorrectAnswer, resetCorrectAnswer } from './commands/question.js';
 
 const userCollectors = new Map();
+const guildConfigCache = new Map();
+
+export async function getGuildConfig(guildId) {
+    if (guildConfigCache.has(guildId)) {
+        return guildConfigCache.get(guildId);
+    }
+    const { data, error } = await supabase
+        .from('guilds')
+        .select('*')
+        .eq('guild_id', guildId)
+        .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    if (data) guildConfigCache.set(guildId, data);
+    return data;
+}
+
+export async function upsertGuildConfig(guildId, guildName, config = {}) {
+    const { data, error } = await supabase
+        .from('guilds')
+        .upsert({
+            guild_id: guildId,
+            guild_name: guildName,
+            ...config
+        }, { onConflict: 'guild_id' })
+        .select()
+        .single();
+
+    if (error) throw error;
+    
+    guildConfigCache.set(guildId, data);
+    return data;
+}
+
+export function clearGuildConfigCache(guildId) {
+    if (guildId) {
+        guildConfigCache.delete(guildId);
+    } else {
+        guildConfigCache.clear();
+    }
+}
+
+export async function getAllGuildConfigs() {
+    const { data, error } = await supabase
+        .from('guilds')
+        .select('*');
+
+    if (error) throw error;
+    return data || [];
+}
 
 export function setUserCollector(userId, collector) {
     const prev = userCollectors.get(userId);
@@ -68,10 +118,11 @@ export async function handleCommand(message) {
                 .single();
             
             const answerPoint = categoryData?.answer_point;
-            var sendMessage = `${message.author.username}님 정답! `;
+            const displayName = message.member?.displayName || message.author.username;
+            var sendMessage = `${displayName}님 정답! `;
 
             if (answerPoint) {
-                await upsertUserScore(message.author.id, message.author.username, answerPoint);
+                await upsertUserScore(message.guild.id, message.author.id, displayName, answerPoint);
                 sendMessage += `+${answerPoint} 포인트 💯`;
             }
             return message.reply(sendMessage);
@@ -82,38 +133,45 @@ export async function handleCommand(message) {
     }
 }
 
-export async function sendError(content) {
-    const logChannel = client.channels.cache.get(process.env.LOG_CHANNEL_ID);
-
-    if (logChannel) {
-        await logChannel.send(content);
-    } else {
-        let admins = [];
-        const guild = client.guilds.cache.get(process.env.GUILD_ID);
-
-        if (guild) {
-            admins = message.guild.members.cache.filter(member => member.permissions.has(process.env.ROLE_ADMIN_ID));
-
-            if (!admins || admins.size === 0) {
-                const members = await message.guild.members.fetch();
-                admins = members.filter(member => member.permissions.has(process.env.ROLE_ADMIN_ID));
+export async function sendError(content, guildId = null) {
+    console.log(content);
+    try {
+        if (!client.isReady()) return;
+        
+        if (guildId) {
+            const config = await getGuildConfig(guildId);
+            if (config?.log_channel_id) {
+                const logChannel = client.channels.cache.get(config.log_channel_id);
+                if (logChannel) {
+                    await logChannel.send(content);
+                    return;
+                }
             }
         }
-
-        for (const [id, member] of admins) {
-            await member.send(content);
+        const guildConfigs = await getAllGuildConfigs();
+        for (const config of guildConfigs) {
+            if (config.log_channel_id) {
+                const logChannel = client.channels.cache.get(config.log_channel_id);
+                if (logChannel) {
+                    await logChannel.send(content);
+                    return;
+                }
+            }
         }
+    } catch (err) {
+        console.error('sendError failed:', err);
     }
 }
 
-export async function upsertUserScore(userId, username, score) {
+export async function upsertUserScore(guildId, userId, username, score) {
     const { data: userRows, error: selectError } = await supabase
         .from('users')
         .select('total_score')
+        .eq('guild_id', guildId)
         .eq('user_id', userId)
         .single();
 
-    if (selectError && selectError.code !== 'PGRST116') throw selectError; // PGRST116: row not found
+    if (selectError && selectError.code !== 'PGRST116') throw selectError;
 
     if (userRows && userRows.total_score !== undefined) {
         score += userRows.total_score;
@@ -122,8 +180,8 @@ export async function upsertUserScore(userId, username, score) {
     const { error: upsertError } = await supabase
         .from('users')
         .upsert(
-            { user_id: userId, username, total_score: score },
-            { onConflict: ['user_id'] }
+            { guild_id: guildId, user_id: userId, username, total_score: score },
+            { onConflict: 'guild_id,user_id' }
         );
 
     if (upsertError) throw new Error('점수 업데이트 실패..');
