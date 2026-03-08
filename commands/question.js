@@ -5,6 +5,16 @@ import { setUserCollector, clearUserCollector, sendError } from '../commonFunc.j
 
 let correctAnswer;
 
+function formatRegisteredDate(isoString) {
+    if (!isoString) return null;
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    return `${y}년 ${m}월 ${day}일`;
+}
+
 export default {
     data: new SlashCommandBuilder()
         .setName('question')
@@ -78,8 +88,17 @@ export default {
                         category: selectedCategory,
                     };
 
+                    const authorLabel = randomQuestion.author_username || randomQuestion.author_id;
+                    const registeredAt = randomQuestion.created_at
+                        ? formatRegisteredDate(randomQuestion.created_at)
+                        : null;
+                    const footer = [authorLabel, registeredAt].filter(Boolean).join(' · ');
+                    const problemContent = footer
+                        ? "```" + randomQuestion.question_text + "```\n출제자: " + footer
+                        : "```" + randomQuestion.question_text + "```";
+
                     await selectInteraction.update({ content: '문제가 출제되었습니다.', components: [] });
-                    await interaction.channel.send("```" + randomQuestion.question_text + "```");
+                    await interaction.channel.send(problemContent);
 
                 } catch (err) {
                     await sendError(`question.js Error: ${err?.stack || err}`);
