@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { EmbedBuilder } from 'discord.js';
+import { EmbedBuilder, ChannelType, PermissionFlagsBits, OverwriteType, parseEmoji } from 'discord.js';
 import { supabase, client } from './index.js';
 import { sendError, getGuildConfig, upsertGuildConfig, clearGuildConfigCache, isDevBot, canUseDevBot } from './commonFunc.js';
 
@@ -51,8 +51,24 @@ export async function updateRoleMessage(guildId) {
     const guild = client.guilds.cache.get(guildId);
     if (!guild) return;
 
-    const config = await getGuildConfig(guildId);
-    if (!config?.role_channel_id) return;
+    let config = await getGuildConfig(guildId);
+    if (!config?.role_channel_id) {
+        const category = guild.channels.cache.find((c) => c.type === ChannelType.GuildCategory && c.name === 'Goofy Bot')
+            ?? await guild.channels.create({ name: 'Goofy Bot', type: ChannelType.GuildCategory });
+        const textChannelOverwrites = [
+            { id: guild.id, type: OverwriteType.Role, deny: [PermissionFlagsBits.SendMessages] },
+            { id: client.user.id, type: OverwriteType.Member, allow: [PermissionFlagsBits.SendMessages] },
+        ];
+        const roleChannel = await guild.channels.create({
+            name: '역할설정',
+            type: ChannelType.GuildText,
+            parent: category.id,
+            permissionOverwrites: textChannelOverwrites,
+        });
+        clearGuildConfigCache(guildId);
+        await upsertGuildConfig(guildId, guild.name, { role_channel_id: roleChannel.id });
+        config = await getGuildConfig(guildId);
+    }
 
     const channel = guild.channels.cache.get(config.role_channel_id);
     if (!channel) return;
@@ -71,21 +87,29 @@ export async function updateRoleMessage(guildId) {
         
         await message.reactions.removeAll();
         for (const role of rolesData) {
-            await message.react(role.emoji);
+            try {
+                await message.react(role.emoji);
+            } catch (e) {
+                sendError(`⚠️ 역할 메시지 리액션 실패 (이모지: ${role.emoji}): ${e?.message || e}`, guildId);
+            }
         }
         
-        sendError(`✅ ${guild.name}: 역할 메시지 업데이트 완료`, guildId);
+        sendError(`✅ 역할 메시지 업데이트 완료`);
     } else {
         message = await channel.send({ embeds: [embed] });
         
         for (const role of rolesData) {
-            await message.react(role.emoji);
+            try {
+                await message.react(role.emoji);
+            } catch (e) {
+                sendError(`⚠️ 역할 메시지 리액션 실패 (이모지: ${role.emoji}): ${e?.message || e}`, guildId);
+            }
         }
         
         clearGuildConfigCache(guildId);
         await upsertGuildConfig(guildId, guild.name, { role_message_id: message.id });
         
-        sendError(`✅ ${guild.name}: 새 역할 메시지 생성 (ID: ${message.id})`, guildId);
+        sendError(`✅ 새 역할 메시지 생성`);
     }
 
     return message;
@@ -93,25 +117,24 @@ export async function updateRoleMessage(guildId) {
 
 /**
  * 역할 선택 메시지 초기화 (모든 길드)
+ * - role_message_id가 있고 메시지가 삭제된 경우에만 재생성 (사용자가 직접 생성 안 했을 때는 생성하지 않음)
  */
 export async function initReactionRoles(client) {
     for (const guild of client.guilds.cache.values()) {
         try {
             const config = await getGuildConfig(guild.id);
             if (!config?.role_channel_id) continue;
+            if (!config.role_message_id) continue;
 
-            if (config.role_message_id) {
-                const channel = guild.channels.cache.get(config.role_channel_id);
-                if (channel) {
-                    const message = await channel.messages.fetch(config.role_message_id).catch(() => null);
-                    if (message) {
-                        continue;
-                    }
-                }
-            }
+            const channel = guild.channels.cache.get(config.role_channel_id);
+            if (!channel) continue;
+
+            const message = await channel.messages.fetch(config.role_message_id).catch(() => null);
+            if (message) continue;
+
             await updateRoleMessage(guild.id);
         } catch (err) {
-            sendError(`⚠️ ${guild.name} 역할 초기화 오류: ${err?.stack || err}`);
+            sendError(`⚠️ 역할 초기화 오류: ${err?.stack || err}`);
         }
     }
 }
@@ -153,10 +176,11 @@ export async function handleReaction(reaction, user, add) {
             const logChannel = guild.channels.cache.get(config.log_channel_id);
             if (logChannel) {
                 const action = hasRole ? '역할 해제' : '역할 부여';
-                logChannel.send(`${hasRole ? '❌' : '✅'} **${member.user.tag}**님이 ${reaction.emoji.name} ${action}`);
+                const displayName = member.displayName ?? member.user.username;
+                logChannel.send(`${hasRole ? '❌' : '✅'} **${displayName}**님이 ${reaction.emoji.name} ${action}`);
             }
         }
     } catch (err) {
-        sendError(`역할 토글 오류: ${err?.stack || err}`, guild.id);
+        sendError(`⚠️ 역할 토글 오류: ${err?.stack || err}`, guild.id);
     }
 }

@@ -18,6 +18,17 @@ function isValidEmoji(str) {
     return false;
 }
 
+function isSingleEmoji(str) {
+    const trimmed = str.trim();
+    if (!trimmed) return false;
+    const parsed = parseEmoji(trimmed);
+    if (parsed && parsed.id) {
+        return /^<a?:\w+:\d+>$/i.test(trimmed);
+    }
+    const oneOnly = /^(\p{Emoji_Presentation}|\p{Extended_Pictographic})(\uFE0F|\u200D|\p{Emoji_Modifier})*$/u;
+    return oneOnly.test(trimmed);
+}
+
 function isOwner(interaction) {
     return interaction.guild.ownerId === interaction.user.id;
 }
@@ -46,10 +57,10 @@ async function showMainMenu(interaction, isUpdate = false) {
     const roleChannel = config?.role_channel_id ? `<#${config.role_channel_id}>` : '❌ 미설정';
 
     const content = `**⚙️ ${interaction.guild.name} 서버 설정**\n\n` +
-        `🔊 독서실 채널: ${studyRoom}\n` +
-        `💬 일반 채널: ${generalChannel}\n` +
+        `💬 공지사항 채널: ${generalChannel}\n` +
+        `🎭 역할선택 채널: ${roleChannel}\n` +
         `📝 로그 채널: ${logChannel}\n` +
-        `🎭 역할 채널: ${roleChannel}\n\n` +
+        `🔊 독서실 채널: ${studyRoom}\n\n` +
         `아래 버튼을 눌러 설정을 변경하세요.`;
 
     const row1 = new ActionRowBuilder().addComponents(
@@ -109,7 +120,7 @@ export async function handleSetupInteraction(interaction) {
                     break;
                 case 'select_general_channel':
                     field = 'general_channel_id';
-                    label = '일반 채널';
+                    label = '공지사항 채널';
                     break;
                 case 'select_log_channel':
                     field = 'log_channel_id';
@@ -117,7 +128,7 @@ export async function handleSetupInteraction(interaction) {
                     break;
                 case 'select_role_channel':
                     field = 'role_channel_id';
-                    label = '역할 채널';
+                    label = '역할선택 채널';
                     break;
             }
 
@@ -179,14 +190,20 @@ export async function handleSetupInteraction(interaction) {
             }
 
             if (!isValidEmoji(emoji)) {
-                return await interaction.reply({ 
+                return await interaction.update({ 
                     content: `❌ 유효한 이모지가 아닙니다.\n\n` +
                         `**입력 방법:**\n` +
                         `• 유니코드 이모지: 이모지를 직접 입력 (예: 🎮, 💼, 📚)\n` +
                         `• 커스텀 이모지: \`<:이름:아이디>\` 형식으로 입력\n\n` +
                         `• \`:emoji:\` 같은 숏코드는 지원되지 않습니다.\n` +
-                        `Windows: Win+. / Mac: Cmd+Ctrl+Space 로 이모지 선택창을 열 수 있습니다.`, 
-                    flags: 64 
+                        `Windows: Win+. / Mac: Cmd+Ctrl+Space 로 이모지 선택창을 열 수 있습니다.`,
+                    components: []
+                });
+            }
+            if (!isSingleEmoji(emoji)) {
+                return await interaction.update({
+                    content: '❌ **한 개의 이모지만** 입력해주세요. 리액션 역할은 이모지 하나당 역할 하나만 등록할 수 있습니다.',
+                    components: []
                 });
             }
 
@@ -212,7 +229,7 @@ export async function handleSetupInteraction(interaction) {
         }
 
     } catch (err) {
-        await sendError(`setup interaction error: ${err?.stack || err}`, guildId);
+        await sendError(`⚠️ setup interaction error: ${err?.stack || err}`, guildId);
         try {
             if (interaction.deferred) {
                 await interaction.editReply({ content: '오류가 발생했습니다.' });
@@ -237,14 +254,14 @@ function backButtonRow() {
 async function showChannelMenu(interaction) {
     const row1 = new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
-            .setCustomId('select_study_room')
-            .setPlaceholder('🔊 독서실 채널 선택')
-            .setChannelTypes(ChannelType.GuildVoice)
+            .setCustomId('select_general_channel')
+            .setPlaceholder('💬 공지사항 채널 선택')
+            .setChannelTypes(ChannelType.GuildText)
     );
     const row2 = new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
-            .setCustomId('select_general_channel')
-            .setPlaceholder('💬 일반 채널 선택')
+            .setCustomId('select_role_channel')
+            .setPlaceholder('🎭 역할선택 채널 선택')
             .setChannelTypes(ChannelType.GuildText)
     );
     const row3 = new ActionRowBuilder().addComponents(
@@ -255,13 +272,13 @@ async function showChannelMenu(interaction) {
     );
     const row4 = new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
-            .setCustomId('select_role_channel')
-            .setPlaceholder('🎭 역할 채널 선택')
-            .setChannelTypes(ChannelType.GuildText)
+            .setCustomId('select_study_room')
+            .setPlaceholder('🔊 독서실 채널 선택')
+            .setChannelTypes(ChannelType.GuildVoice)
     );
 
     await interaction.update({
-        content: '**📺 채널 설정**\n아래 메뉴에서 각 채널을 선택하세요.',
+        content: '**아래 메뉴에서 각 채널을 선택하세요.',
         components: [row1, row2, row3, row4, backButtonRow()]
     });
 }
@@ -287,12 +304,16 @@ async function showRoleMenu(interaction) {
         new ButtonBuilder()
             .setCustomId('setup_role_remove')
             .setLabel('➖ 역할 삭제')
-            .setStyle(ButtonStyle.Danger)
+            .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+            .setCustomId('setup_back')
+            .setLabel('⬅️ 뒤로가기')
+            .setStyle(ButtonStyle.Secondary)
     );
 
     await interaction.update({
-        content: `**🎭 리액션 역할 설정**\n\n**현재 등록된 역할:**\n${roleList}`,
-        components: [row, backButtonRow()]
+        content: `**현재 등록된 역할:**\n${roleList}\n\u200b\n`,
+        components: [row]
     });
 }
 

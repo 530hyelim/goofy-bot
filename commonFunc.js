@@ -145,7 +145,6 @@ export async function handleCommand(message) {
 }
 
 export async function sendError(content, guildId = null) {
-    console.log(content);
     try {
         if (!client.isReady()) return;
         

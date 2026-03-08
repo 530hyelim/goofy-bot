@@ -56,7 +56,7 @@ export default {
 
             await showCategorySelect(modalInteraction, author.id, questionText, answerText);
         } catch (err) {
-            await sendError(`register.js Error: ${err?.stack || err}`);
+            await sendError(`⚠️ register.js Error: ${err?.stack || err}`);
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 }).catch(() => {});
             }
@@ -110,7 +110,7 @@ async function showCategorySelect(modalInteraction, authorId, questionText, answ
             const selectedCategory = selectInteraction.values[0];
             await showCriteriaSelect(selectInteraction, channel, authorId, selectedCategory, questionText, answerText);
         } catch (err) {
-            await sendError(`register.js Error: ${err?.stack || err}`);
+            await sendError(`⚠️ register.js Error: ${err?.stack || err}`);
             await selectInteraction.update({ content: '오류가 발생했습니다.', components: [], flags: 64 }).catch(() => {});
         }
     });
@@ -196,7 +196,7 @@ async function showCriteriaSelect(selectInteraction, channel, authorId, selected
 
             await criteriaInteraction.update({ content: sendMessage, components: [], flags: 64 });
         } catch (err) {
-            await sendError(`register.js Error: ${err?.stack || err}`);
+            await sendError(`⚠️ register.js Error: ${err?.stack || err}`);
             await criteriaInteraction.update({ content: '오류가 발생했습니다.', components: [], flags: 64 }).catch(() => {});
         }
     });

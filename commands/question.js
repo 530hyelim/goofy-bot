@@ -101,7 +101,7 @@ export default {
                     await interaction.channel.send(problemContent);
 
                 } catch (err) {
-                    await sendError(`question.js Error: ${err?.stack || err}`);
+                    await sendError(`⚠️ question.js Error: ${err?.stack || err}`);
                 }
             });
             collector.on('end', () => {
@@ -109,7 +109,7 @@ export default {
             });
 
         } catch (err) {
-            await sendError(`question.js Error: ${err?.stack || err}`);
+            await sendError(`⚠️ question.js Error: ${err?.stack || err}`);
             if (!interaction.replied) {
                 await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 });
             }

@@ -73,7 +73,7 @@ async function saveStudyTime(guildId, userId, username, durationMs) {
         if (upsertError) throw upsertError;
         
     } catch (err) {
-        await sendError(`Study time save error: ${err?.stack || err}`);
+        await sendError(`⚠️ Study time save error: ${err?.stack || err}`);
     }
 }
 
@@ -116,7 +116,7 @@ export async function getWeeklyStudyTime(guildId) {
         return sorted;
 
     } catch (err) {
-        await sendError(`Weekly study time fetch error: ${err?.stack || err}`);
+        await sendError(`⚠️ Weekly study time fetch error: ${err?.stack || err}`);
         return [];
     }
 }
