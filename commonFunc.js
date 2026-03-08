@@ -3,6 +3,17 @@ import { client } from './index.js';
 import { supabase } from './index.js';
 import { getCorrectAnswer, resetCorrectAnswer } from './commands/question.js';
 
+/** DEV 봇 여부 (env에 NODE_ENV=DEV 또는 PROD) */
+export function isDevBot() {
+    return process.env.NODE_ENV === 'DEV';
+}
+
+/** DEV 봇일 때 Goofy만 사용 가능 */
+export function canUseDevBot(userId) {
+    if (!isDevBot()) return true;
+    return process.env.GOOFY_ID === userId;
+}
+
 const userCollectors = new Map();
 const guildConfigCache = new Map();
 

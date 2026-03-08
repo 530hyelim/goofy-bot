@@ -1,11 +1,16 @@
 import cron from 'node-cron';
 import { client } from './index.js';
 import { supabase } from './index.js';
-import { sendError, getAllGuildConfigs } from './commonFunc.js';
+import { sendError, getAllGuildConfigs, isDevBot } from './commonFunc.js';
 import { getRankString } from './commands/ranking.js';
 import { getWeeklyStudyTime, getWeeklyStudyReport, saveAllActiveSessions } from './voiceTracker.js';
 
 export function startCrons() {
+    if (isDevBot()) {
+        // 테스트용 크론 등록
+
+        return;
+    }
     // 매월 1일 0시 0분 - 각 길드별 랭킹 발표 및 점수 초기화
     cron.schedule('0 0 1 * *', async () => {
         try {
