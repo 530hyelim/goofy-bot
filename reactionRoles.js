@@ -162,6 +162,18 @@ export async function handleReaction(reaction, user, add) {
     const member = await guild.members.fetch(user.id);
 
     try {
+        //봇이 관리할 수 있는 역할은 봇의 최고 역할보다 아래에 있어야 함
+        const role = guild.roles.cache.get(roleId);
+        const me = guild.members.me;
+
+        if (!role) return;
+        if (!me) return;
+
+        if (role.position > me.roles.highest.position) {
+            await reaction.users.remove(user.id).catch(() => {});
+            throw new Error('디스코드의 **역할 목록 순서**에 따라, 봇보다 **위에 있는** 역할은 부여할 수 없습니다. 서버 설정 → 역할 → 목록에서 **봇 역할을 리액션 역할보다 위로 끌어올려** 주세요.');
+        }
+        
         const hasRole = member.roles.cache.has(roleId);
         
         if (hasRole) {

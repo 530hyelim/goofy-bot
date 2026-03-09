@@ -223,7 +223,7 @@ export async function handleSetupInteraction(interaction) {
             await updateRoleMessage(guildId);
 
             await interaction.editReply({
-                content: `✅ 리액션 역할 추가됨: ${emoji} → <@&${tempData.roleId}>`
+                content: `✅ 리액션 역할 추가됨: ${emoji} → <@&${tempData.roleId}>\n\n💡 이모지가 동작하지 않으면 **서버 설정 → 역할**에서 봇 역할을 이 역할보다 **위**로 올려 주세요.`
             });
             return;
         }
@@ -325,7 +325,7 @@ async function showRoleAddModal(interaction) {
     );
 
     await interaction.update({
-        content: '**➕ 역할 추가**\n추가할 역할을 선택하세요.',
+        content: '**추가할 역할을 선택하세요.\n💡 봇이 부여할 수 있는 역할은 **역할 목록에서 봇 역할보다 아래**에 있어야 합니다.',
         components: [row, backButtonRow()]
     });
 }
