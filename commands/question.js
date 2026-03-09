@@ -36,7 +36,7 @@ export default {
             const categoryMenu = new ActionRowBuilder().addComponents(
                 new StringSelectMenuBuilder()
                     .setCustomId('questionCategorySelect')
-                    .setPlaceholder('카테고리를 선택하세요!')
+                    .setPlaceholder('문제 카테고리를 선택하세요')
                     .addOptions(categoryOptions)
             );
 
@@ -48,7 +48,7 @@ export default {
                     .setStyle(ButtonStyle.Danger)
             );
 
-            await interaction.reply({ content: '문제 카테고리를 선택하세요.', components: [categoryMenu, cancelButton], flags: 64 });
+            await interaction.reply({ components: [categoryMenu, cancelButton], flags: 64 });
 
             // 카테고리 선택 콜렉터 생성
             const collector = interaction.channel.createMessageComponentCollector({
@@ -108,7 +108,7 @@ export default {
                     await interaction.channel.send({ content: problemContent, components: [reportBtn] });
 
                 } catch (err) {
-                    await sendError(`⚠️ question.js Error: ${err?.stack || err}`);
+                    await sendError(`⚠️ question.js Error: ${err?.stack || err}`, selectInteraction.guildId);
                 }
             });
             collector.on('end', () => {
@@ -116,7 +116,7 @@ export default {
             });
 
         } catch (err) {
-            await sendError(`⚠️ question.js Error: ${err?.stack || err}`);
+            await sendError(`⚠️ question.js Error: ${err?.stack || err}`, interaction.guildId);
             if (!interaction.replied) {
                 await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 });
             }

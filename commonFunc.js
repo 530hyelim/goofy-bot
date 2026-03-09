@@ -128,33 +128,25 @@ export async function handleCommand(message) {
             return message.reply(sendMessage);
 
         } catch (err) {
-            await sendError(`answer Error: ${err?.stack || err}`);
+            await sendError(`answer Error: ${err?.stack || err}`, message.guild?.id);
         }
     }
 }
 
+/** 길드 없음/전역 작업 시 로그를 보낼 고정 길드 */
+const DEFAULT_LOG_GUILD_ID = '1378367135230984252';
+
 export async function sendError(content, guildId = null) {
     try {
         if (!client.isReady()) return;
-        
-        if (guildId) {
-            const config = await getGuildConfig(guildId);
-            if (config?.log_channel_id) {
-                const logChannel = client.channels.cache.get(config.log_channel_id);
-                if (logChannel) {
-                    await logChannel.send(content);
-                    return;
-                }
-            }
-        }
-        const guildConfigs = await getAllGuildConfigs();
-        for (const config of guildConfigs) {
-            if (config.log_channel_id) {
-                const logChannel = client.channels.cache.get(config.log_channel_id);
-                if (logChannel) {
-                    await logChannel.send(content);
-                    return;
-                }
+
+        const targetGuildId = guildId || DEFAULT_LOG_GUILD_ID;
+        const config = await getGuildConfig(targetGuildId);
+        if (config?.log_channel_id) {
+            const logChannel = client.channels.cache.get(config.log_channel_id);
+            if (logChannel) {
+                await logChannel.send(content);
+                return;
             }
         }
     } catch (err) {

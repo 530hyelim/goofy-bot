@@ -94,7 +94,7 @@ export async function updateRoleMessage(guildId) {
             }
         }
         
-        sendError(`✅ 역할 메시지 업데이트 완료`);
+        sendError(`✅ 역할 메시지 업데이트 완료`, guildId);
     } else {
         message = await channel.send({ embeds: [embed] });
         
@@ -109,7 +109,7 @@ export async function updateRoleMessage(guildId) {
         clearGuildConfigCache(guildId);
         await upsertGuildConfig(guildId, guild.name, { role_message_id: message.id });
         
-        sendError(`✅ 새 역할 메시지 생성`);
+        sendError(`✅ 새 역할 메시지 생성`, guildId);
     }
 
     return message;
@@ -134,7 +134,7 @@ export async function initReactionRoles(client) {
 
             await updateRoleMessage(guild.id);
         } catch (err) {
-            sendError(`⚠️ 역할 초기화 오류: ${err?.stack || err}`);
+            sendError(`⚠️ 역할 초기화 오류: ${err?.stack || err}`, guild.id);
         }
     }
 }
@@ -184,14 +184,10 @@ export async function handleReaction(reaction, user, add) {
 
         await reaction.users.remove(user.id);
 
-        if (config?.log_channel_id) {
-            const logChannel = guild.channels.cache.get(config.log_channel_id);
-            if (logChannel) {
-                const action = hasRole ? '역할 해제' : '역할 부여';
-                const displayName = member.displayName ?? member.user.username;
-                logChannel.send(`${hasRole ? '❌' : '✅'} **${displayName}**님이 ${reaction.emoji.name} ${action}`);
-            }
-        }
+        const action = hasRole ? '역할 해제' : '역할 부여';
+        const displayName = member.displayName ?? member.user.username;
+        sendError(`${hasRole ? '❌' : '✅'} **${displayName}**님이 **${role.name}** ${action}`, guild.id);
+
     } catch (err) {
         sendError(`⚠️ 역할 토글 오류: ${err?.stack || err}`, guild.id);
     }

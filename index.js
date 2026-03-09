@@ -90,15 +90,15 @@ client.on('guildCreate', async (guild) => {
                     study_room_id: studyRoomCh.id,
                 });
                 clearGuildConfigCache(guild.id);
-                sendError(`✅ 새 서버 추가: ${guild.name} (${guild.id})`);
+                sendError(`✅ 새 서버 추가: ${guild.name} (${guild.id})`, guild.id);
             } catch (channelErr) {
-                sendError(`⚠️ ${guild.name} 채널 자동 생성 실패 (권한 확인): ${channelErr?.stack || channelErr}`);
+                sendError(`⚠️ ${guild.name} 채널 자동 생성 실패 (권한 확인): ${channelErr?.stack || channelErr}`, guild.id);
             }
         } else {
-            sendError(`✅ 서버 입장: ${guild.name} (${guild.id})`);
+            sendError(`✅ 서버 입장: ${guild.name} (${guild.id})`, guild.id);
         }
     } catch (err) {
-        sendError(`⚠️ 서버 설정 저장 실패: ${err?.stack || err}`);
+        sendError(`⚠️ 서버 설정 저장 실패: ${err?.stack || err}`, guild.id);
     }
 });
 
@@ -149,7 +149,7 @@ async function loadCommands() {
             // DB에 길드 설정이 없으면 생성
             await upsertGuildConfig(guild.id, guild.name);
         } catch (error) {
-            sendError(`⚠️ 슬래시 커맨드 등록 오류:`, error);
+            sendError(`⚠️ 슬래시 커맨드 등록 오류: ${error?.stack || error}`, guild.id);
         }
     }
 }
@@ -185,7 +185,7 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
     } catch (error) {
-        sendError(`⚠️ 인터랙션 오류: ${error?.stack || error}`);
+        sendError(`⚠️ 인터랙션 오류: ${error?.stack || error}`, interaction.guildId);
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 }).catch(() => {});
         }

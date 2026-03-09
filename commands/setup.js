@@ -194,9 +194,9 @@ export async function handleSetupInteraction(interaction) {
                     content: `❌ 유효한 이모지가 아닙니다.\n\n` +
                         `**입력 방법:**\n` +
                         `• 유니코드 이모지: 이모지를 직접 입력 (예: 🎮)\n` +
-                        `• 커스텀 이모지: \`<:이름:아이디>\` 형식으로 입력\n\n` +
+                        `• 커스텀 이모지: \`<:이름:아이디>\` 형식으로 입력\n` +
                         `• \`:emoji:\` 같은 숏코드는 지원되지 않습니다.\n` +
-                        `Windows: Win+. / Mac: Cmd+Ctrl+Space 로 이모지 선택창을 열 수 있습니다.`,
+                        `• Windows: Win+. / Mac: Cmd+Ctrl+Space 로 이모지 선택창을 열 수 있습니다.`,
                     components: []
                 });
             }
@@ -277,7 +277,7 @@ async function showChannelMenu(interaction) {
             .setChannelTypes(ChannelType.GuildVoice)
     );
 
-    await interaction.update({components: [row1, row2, row3, row4, backButtonRow()]});
+    await interaction.update({content:'', components: [row1, row2, row3, row4, backButtonRow()]});
 }
 
 async function showRoleMenu(interaction) {

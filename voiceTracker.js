@@ -72,7 +72,7 @@ async function saveStudyTime(guildId, userId, username, durationMs) {
         if (upsertError) throw upsertError;
         
     } catch (err) {
-        await sendError(`⚠️ Study time save error: ${err?.stack || err}`);
+        await sendError(`⚠️ Study time save error: ${err?.stack || err}`, guildId);
     }
 }
 
@@ -115,7 +115,7 @@ export async function getWeeklyStudyTime(guildId) {
         return sorted;
 
     } catch (err) {
-        await sendError(`⚠️ Weekly study time fetch error: ${err?.stack || err}`);
+        await sendError(`⚠️ Weekly study time fetch error: ${err?.stack || err}`, guildId);
         return [];
     }
 }
@@ -167,13 +167,18 @@ export function getWeeklyStudyReport(studyData) {
 export async function saveAllActiveSessions(guildId = null) {
     for (const [sessionKey, session] of voiceSessions.entries()) {
         if (guildId && session.guildId !== guildId) continue;
-        
-        const duration = Date.now() - session.joinTime;
-        const [sessionGuildId, userId] = sessionKey.split('_');
-        await saveStudyTime(sessionGuildId, userId, session.displayName, duration);
-        voiceSessions.set(sessionKey, {
-            ...session,
-            joinTime: Date.now()
-        });
+
+        const sessionGuildId = session.guildId || sessionKey.split('_')[0];
+        try {
+            const duration = Date.now() - session.joinTime;
+            const [, userId] = sessionKey.split('_');
+            await saveStudyTime(sessionGuildId, userId, session.displayName, duration);
+            voiceSessions.set(sessionKey, {
+                ...session,
+                joinTime: Date.now()
+            });
+        } catch (err) {
+            await sendError(`[자정 세션 저장] guild_id: ${sessionGuildId}\n${err?.stack || err}`, sessionGuildId);
+        }
     }
 }

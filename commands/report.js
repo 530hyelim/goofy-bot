@@ -135,10 +135,10 @@ async function sendReportToLog(sourceGuildId, content) {
         if (logChannel) {
             await logChannel.send(content + withSource);
         } else {
-            await sendError(`[Report] 로그 채널이 설정되지 않았습니다. (guild: ${REPORT_LOG_GUILD_ID})\n${content}`);
+            await sendError(`[Report] 로그 채널이 설정되지 않았습니다. (guild: ${REPORT_LOG_GUILD_ID})\n${content}`, sourceGuildId);
         }
     } catch (err) {
-        await sendError(`⚠️ report.js sendReportToLog: ${err?.stack || err}`);
+        await sendError(`⚠️ report.js sendReportToLog: ${err?.stack || err}`, sourceGuildId);
     }
 }
 
@@ -172,7 +172,7 @@ export default {
         try {
             await showReportTypeMenu(interaction);
         } catch (err) {
-            await sendError(`⚠️ report.js execute: ${err?.stack || err}`);
+            await sendError(`⚠️ report.js execute: ${err?.stack || err}`, interaction.guildId);
             if (!interaction.replied && !interaction.deferred) {
                 await interaction.reply({ content: '오류가 발생했습니다.', flags: 64 }).catch(() => {});
             }

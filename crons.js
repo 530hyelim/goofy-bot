@@ -29,7 +29,7 @@ export function startCrons() {
                     
                     if (error) throw new Error(error);
                 } catch (err) {
-                    await sendError(`점수 초기화 오류: ${err?.stack || err}`);
+                    await sendError(`[점수 초기화] guild_id: ${config.guild_id} (${config.guild_name || '-'})\n${err?.stack || err}`, config.guild_id);
                 }
             }
             await sendError(`전체 길드 점수 초기화 완료!`);
@@ -65,7 +65,7 @@ export function startCrons() {
                     const report = getWeeklyStudyReport(studyData);
                     await channel.send(report);
                 } catch (err) {
-                    await sendError(`주간 리포트 오류: ${err?.stack || err}`);
+                    await sendError(`[주간 리포트] guild_id: ${config.guild_id} (${config.guild_name || '-'})\n${err?.stack || err}`, config.guild_id);
                 }
             }
 
