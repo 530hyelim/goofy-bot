@@ -75,7 +75,7 @@ async function showCategorySelect(modalInteraction, authorId, questionText, answ
     const categoryMenu = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId('categorySelect')
-            .setPlaceholder('선택하세요')
+            .setPlaceholder('카테고리를 선택하세요')
             .addOptions(categories.map((c) => ({ value: c.cate_no.toString(), label: c.cate_name })))
     );
 
@@ -87,7 +87,7 @@ async function showCategorySelect(modalInteraction, authorId, questionText, answ
     );
 
     await modalInteraction.reply({
-        content: '카테고리를 선택하세요.',
+        content: '카테고리 추가 요청은 `/report` 로 부탁드립니다.',
         components: [categoryMenu, cancelButton],
         flags: 64
     });
@@ -129,7 +129,7 @@ async function showCriteriaSelect(selectInteraction, channel, authorId, selected
     const criteriaMenu = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId('criteriaSelect')
-            .setPlaceholder('선택하세요')
+            .setPlaceholder('채점기준을 선택하세요')
             .addOptions(criteria.map((c) => ({ value: c.crit_no.toString(), label: c.crit_name })))
     );
 
@@ -141,7 +141,7 @@ async function showCriteriaSelect(selectInteraction, channel, authorId, selected
     );
 
     await selectInteraction.update({
-        content: '채점기준을 선택하세요.',
+        content: '채점기준 추가 요청은 `/report` 로 부탁드립니다.',
         components: [criteriaMenu, cancelButton],
         flags: 64
     });

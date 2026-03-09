@@ -57,10 +57,10 @@ async function showMainMenu(interaction, isUpdate = false) {
     const roleChannel = config?.role_channel_id ? `<#${config.role_channel_id}>` : '❌ 미설정';
 
     const content = `**⚙️ ${interaction.guild.name} 서버 설정**\n\n` +
-        `💬 공지사항 채널: ${generalChannel}\n` +
+        `📢 공지사항 채널: ${generalChannel}\n` +
         `🎭 역할선택 채널: ${roleChannel}\n` +
         `📝 로그 채널: ${logChannel}\n` +
-        `🔊 독서실 채널: ${studyRoom}\n\n` +
+        `📚 독서실 채널: ${studyRoom}\n\n` +
         `아래 버튼을 눌러 설정을 변경하세요.`;
 
     const row1 = new ActionRowBuilder().addComponents(
@@ -193,7 +193,7 @@ export async function handleSetupInteraction(interaction) {
                 return await interaction.update({ 
                     content: `❌ 유효한 이모지가 아닙니다.\n\n` +
                         `**입력 방법:**\n` +
-                        `• 유니코드 이모지: 이모지를 직접 입력 (예: 🎮, 💼, 📚)\n` +
+                        `• 유니코드 이모지: 이모지를 직접 입력 (예: 🎮)\n` +
                         `• 커스텀 이모지: \`<:이름:아이디>\` 형식으로 입력\n\n` +
                         `• \`:emoji:\` 같은 숏코드는 지원되지 않습니다.\n` +
                         `Windows: Win+. / Mac: Cmd+Ctrl+Space 로 이모지 선택창을 열 수 있습니다.`,
@@ -255,7 +255,7 @@ async function showChannelMenu(interaction) {
     const row1 = new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
             .setCustomId('select_general_channel')
-            .setPlaceholder('💬 공지사항 채널 선택')
+            .setPlaceholder('📢 공지사항 채널 선택')
             .setChannelTypes(ChannelType.GuildText)
     );
     const row2 = new ActionRowBuilder().addComponents(
@@ -273,14 +273,11 @@ async function showChannelMenu(interaction) {
     const row4 = new ActionRowBuilder().addComponents(
         new ChannelSelectMenuBuilder()
             .setCustomId('select_study_room')
-            .setPlaceholder('🔊 독서실 채널 선택')
+            .setPlaceholder('📚 독서실 채널 선택')
             .setChannelTypes(ChannelType.GuildVoice)
     );
 
-    await interaction.update({
-        content: '**아래 메뉴에서 각 채널을 선택하세요.',
-        components: [row1, row2, row3, row4, backButtonRow()]
-    });
+    await interaction.update({components: [row1, row2, row3, row4, backButtonRow()]});
 }
 
 async function showRoleMenu(interaction) {
@@ -321,11 +318,11 @@ async function showRoleAddModal(interaction) {
     const row = new ActionRowBuilder().addComponents(
         new RoleSelectMenuBuilder()
             .setCustomId('select_role_for_add')
-            .setPlaceholder('역할 선택')
+            .setPlaceholder('추가할 역할을 선택하세요')
     );
 
     await interaction.update({
-        content: '**추가할 역할을 선택하세요.\n💡 봇이 부여할 수 있는 역할은 **역할 목록에서 봇 역할보다 아래**에 있어야 합니다.',
+        content: '💡 봇이 부여할 수 있는 역할은 **역할 목록에서 봇 역할보다 아래**에 있어야 합니다.',
         components: [row, backButtonRow()]
     });
 }
@@ -383,12 +380,9 @@ async function showRoleRemoveMenu(interaction) {
     const row = new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
             .setCustomId('select_role_to_remove')
-            .setPlaceholder('삭제할 역할 선택')
+            .setPlaceholder('삭제할 역할을 선택하세요')
             .addOptions(options)
     );
 
-    await interaction.update({
-        content: '**➖ 역할 삭제**\n삭제할 역할을 선택하세요.',
-        components: [row, backButtonRow()]
-    });
+    await interaction.update({components: [row, backButtonRow()]});
 }

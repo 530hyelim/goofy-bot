@@ -4,6 +4,7 @@ import { startCrons } from './crons.js';
 import { sendError, handleCommand, upsertGuildConfig, getGuildConfig, clearGuildConfigCache } from './commonFunc.js';
 import { initReactionRoles, handleReaction } from './reactionRoles.js';
 import { handleSetupInteraction } from './commands/setup.js';
+import { handleReportInteraction } from './commands/report.js';
 import { handleVoiceStateUpdate } from './voiceTracker.js';
 import { createClient } from '@supabase/supabase-js';
 import { Client, GatewayIntentBits, Partials, Collection, REST, Routes, ChannelType, PermissionFlagsBits, OverwriteType } from 'discord.js';
@@ -175,6 +176,10 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
         const customId = interaction.customId || '';
+        if (customId.startsWith('report')) {
+            await handleReportInteraction(interaction);
+            return;
+        }
         if (customId.startsWith('setup') || customId.startsWith('select_') || customId.startsWith('modal_role')) {
             await handleSetupInteraction(interaction);
             return;

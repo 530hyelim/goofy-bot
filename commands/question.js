@@ -76,7 +76,7 @@ export default {
 
                     if (qErr) throw new Error(qErr);
                     if (!questions || questions.length === 0) {
-                        await selectInteraction.update({ content: '문제가 없습니다. /register 커맨드를 통해 문제를 등록해주세요!', components: [] });
+                        await selectInteraction.update({ content: '문제가 없습니다. `/register` 를 통해 문제를 등록해주세요!', components: [] });
                         return;
                     }
 
@@ -97,8 +97,15 @@ export default {
                         ? "```" + randomQuestion.question_text + "```\n출제자: " + footer
                         : "```" + randomQuestion.question_text + "```";
 
+                    const reportBtn = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`reportQuestion_${randomQuestion.question_id}`)
+                            .setLabel('신고')
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+
                     await selectInteraction.update({ content: '문제가 출제되었습니다.', components: [] });
-                    await interaction.channel.send(problemContent);
+                    await interaction.channel.send({ content: problemContent, components: [reportBtn] });
 
                 } catch (err) {
                     await sendError(`⚠️ question.js Error: ${err?.stack || err}`);
