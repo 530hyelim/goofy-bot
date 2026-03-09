@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { EmbedBuilder, ChannelType, PermissionFlagsBits, OverwriteType, parseEmoji } from 'discord.js';
 import { supabase, client } from './index.js';
-import { sendError, getGuildConfig, upsertGuildConfig, clearGuildConfigCache, isDevBot, canUseDevBot } from './commonFunc.js';
+import { sendError, getGuildConfig, upsertGuildConfig, clearGuildConfigCache } from './commonFunc.js';
 
 const reactionRolesCache = new Map();
 

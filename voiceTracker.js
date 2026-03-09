@@ -1,5 +1,5 @@
 import { supabase } from './index.js';
-import { sendError, getGuildConfig, isDevBot } from './commonFunc.js';
+import { sendError, getGuildConfig } from './commonFunc.js';
 
 const voiceSessions = new Map();
 

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import express from 'express';
 import { startCrons } from './crons.js';
-import { sendError, handleCommand, upsertGuildConfig, getGuildConfig, clearGuildConfigCache, canUseDevBot, isDevBot } from './commonFunc.js';
+import { sendError, handleCommand, upsertGuildConfig, getGuildConfig, clearGuildConfigCache } from './commonFunc.js';
 import { initReactionRoles, handleReaction } from './reactionRoles.js';
 import { handleSetupInteraction } from './commands/setup.js';
 import { handleVoiceStateUpdate } from './voiceTracker.js';
