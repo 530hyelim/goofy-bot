@@ -143,7 +143,7 @@ export async function initReactionRoles(client) {
  * 리액션 역할 토글 (이모지 추가 시에만 처리, 토글 후 반응 제거)
  */
 export async function handleReaction(reaction, user, add) {
-    if (user.bot || isDevBot()) return;
+    if (user.bot) return;
     if (!add) return;
     
     if (reaction.partial) await reaction.fetch();

@@ -161,22 +161,13 @@ async function registerCommandsForGuild(guildId) {
     await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: slashCommandsData });
 }
 
-client.on('messageCreate', (message) => {
-    if (isDevBot() && !canUseDevBot(message.author.id)) return;
-    handleCommand(message, client);
-});
+client.on('messageCreate', (message) => handleCommand(message, client));
 client.on('messageReactionAdd', (reaction, user) => handleReaction(reaction, user, true));
 client.on('messageReactionRemove', (reaction, user) => handleReaction(reaction, user, false));
 client.on('voiceStateUpdate', (oldState, newState) => handleVoiceStateUpdate(oldState, newState));
 
 client.on('interactionCreate', async (interaction) => {
     try {
-        if (isDevBot() && !canUseDevBot(interaction.user.id)) {
-            if (!interaction.replied && !interaction.deferred) {
-                await interaction.reply({ content: '이 봇은 개발용(DEV)입니다. 일반 이용은 Goofy Bot을 사용해 주세요.', flags: 64 }).catch(() => {});
-            }
-            return;
-        }
         if (interaction.isChatInputCommand()) {
             const command = client.slashCommands.get(interaction.commandName);
             if (!command) return;

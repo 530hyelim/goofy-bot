@@ -4,7 +4,6 @@ import { sendError, getGuildConfig, isDevBot } from './commonFunc.js';
 const voiceSessions = new Map();
 
 export async function handleVoiceStateUpdate(oldState, newState) {
-    if (isDevBot()) return;
     const member = newState.member || oldState.member;
     const userId = member?.id;
     const guildId = newState.guild?.id || oldState.guild?.id;
