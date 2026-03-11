@@ -1,3 +1,4 @@
+import { EmbedBuilder } from 'discord.js';
 import { supabase } from './index.js';
 import { sendError, getGuildConfig } from './commonFunc.js';
 
@@ -135,33 +136,37 @@ export function formatStudyTime(seconds) {
 }
 
 export function getWeeklyStudyReport(studyData) {
-    if (!studyData || studyData.length === 0) {
-        return '📚 이번 주 독서실 이용 기록이 없습니다.';
-    }
-
     const today = new Date();
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
-    
     const formatDate = (date) => `${date.getMonth() + 1}/${date.getDate()}`;
-    
-    let report = `📚 **주간 독서실 이용 현황** (${formatDate(weekAgo)} ~ ${formatDate(today)})\n`;
-    report += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    const medals = ['🥇', '🥈', '🥉'];
-    
-    studyData.forEach((user, index) => {
-        const rank = index < 3 ? medals[index] : `${index + 1}.`;
-        const timeStr = formatStudyTime(user.totalSeconds);
-        report += `${rank} **${user.username}** - ${timeStr}\n`;
-    });
+    let description;
+    if (!studyData || studyData.length === 0) {
+        description = '📚 이번 주 독서실 이용 기록이 없습니다.';
+    } else {
+        let report = `📚 **주간 독서실 이용 현황** (${formatDate(weekAgo)} ~ ${formatDate(today)})\n`;
+        report += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    const totalSeconds = studyData.reduce((sum, user) => sum + user.totalSeconds, 0);
-    report += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-    report += `📊 총 이용 시간: **${formatStudyTime(totalSeconds)}**\n`;
-    report += `👥 이용자 수: **${studyData.length}명**`;
+        const medals = ['🥇', '🥈', '🥉'];
+        studyData.forEach((user, index) => {
+            const rank = index < 3 ? medals[index] : `${index + 1}.`;
+            const timeStr = formatStudyTime(user.totalSeconds);
+            report += `${rank} **${user.username}** - ${timeStr}\n`;
+        });
 
-    return report;
+        const totalSeconds = studyData.reduce((sum, user) => sum + user.totalSeconds, 0);
+        report += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+        report += `📊 총 이용 시간: **${formatStudyTime(totalSeconds)}**\n`;
+        report += `👥 이용자 수: **${studyData.length}명**`;
+        description = report;
+    }
+
+    const embed = new EmbedBuilder()
+        .setDescription(description)
+        .setColor('#5865F2');
+
+    return { embeds: [embed] };
 }
 
 export async function saveAllActiveSessions(guildId = null) {

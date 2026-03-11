@@ -14,16 +14,16 @@ export async function getRankString(guildId) {
     if (!ranking || ranking.length === 0) throw new Error('랭킹 데이터가 없습니다.');
 
     const guild = client.guilds.cache.get(guildId);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
 
-    let result = '';
+    let result = `🏆 **${year}년 ${month}월 랭킹**\n`;
+    result += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    const medals = ['🥇', '🥈', '🥉'];
     for (let i = 0; i < ranking.length; i++) {
-        switch (i) {
-            case 0: result += `🥇등 : `; break;
-            case 1: result += `🥈등 : `; break;
-            case 2: result += `🥉등 : `; break;
-            default: result += `${i+1}등 : `;
-        }
-        
+        const rank = i < 3 ? medals[i] : `${i + 1}.`;
         let displayName = ranking[i].username;
         if (guild) {
             try {
@@ -31,12 +31,15 @@ export async function getRankString(guildId) {
                 displayName = member?.displayName || ranking[i].username;
             } catch (e) {}
         }
-        
-        result += `${displayName} - ${ranking[i].total_score}점\n`;
+        result += `${rank} **${displayName}** - ${ranking[i].total_score}점\n`;
     }
 
+    const totalScore = ranking.reduce((sum, u) => sum + (u.total_score || 0), 0);
+    result += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+    result += `📊 참여자 수: **${ranking.length}명**\n`;
+    result += `📈 총점: **${totalScore}점**`;
+
     const embed = new EmbedBuilder()
-        .setTitle(`${new Date().getFullYear()}년 ${new Date().getMonth() + 1}월 랭킹`)
         .setDescription(result)
         .setColor("#5865F2");
 
