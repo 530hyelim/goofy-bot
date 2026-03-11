@@ -28,7 +28,7 @@ export default {
             const answerInput = new TextInputBuilder()
                 .setCustomId('answerText')
                 .setLabel('정답')
-                .setStyle(TextInputStyle.Short)
+                .setStyle(TextInputStyle.Paragraph)
                 .setPlaceholder('정답을 입력하세요')
                 .setRequired(true);
 
@@ -76,7 +76,11 @@ async function showCategorySelect(modalInteraction, authorId, questionText, answ
         new StringSelectMenuBuilder()
             .setCustomId('categorySelect')
             .setPlaceholder('카테고리를 선택하세요')
-            .addOptions(categories.map((c) => ({ value: c.cate_no.toString(), label: c.cate_name })))
+            .addOptions(categories.map((c) => {
+                const opt = { value: c.cate_no.toString(), label: c.cate_name };
+                opt.description = `+${c.add_point ?? 0}점`.slice(0, 100);
+                return opt;
+            }))
     );
 
     const cancelButton = new ActionRowBuilder().addComponents(
@@ -122,7 +126,7 @@ async function showCategorySelect(modalInteraction, authorId, questionText, answ
  * 2단계: 채점기준 선택 후 저장
  */
 async function showCriteriaSelect(selectInteraction, channel, authorId, selectedCategory, questionText, answerText) {
-    const { data: criteria, error: critError } = await supabase.from('criteria').select('*');
+    const { data: criteria, error: critError } = await supabase.from('criteria').select('crit_no, crit_name, description');
     if (critError) throw new Error(critError);
     if (!criteria?.length) throw new Error("채점기준이 없습니다!");
 
@@ -130,7 +134,11 @@ async function showCriteriaSelect(selectInteraction, channel, authorId, selected
         new StringSelectMenuBuilder()
             .setCustomId('criteriaSelect')
             .setPlaceholder('채점기준을 선택하세요')
-            .addOptions(criteria.map((c) => ({ value: c.crit_no.toString(), label: c.crit_name })))
+            .addOptions(criteria.map((c) => {
+                const opt = { value: c.crit_no.toString(), label: c.crit_name };
+                if (c.description) opt.description = String(c.description).slice(0, 100);
+                return opt;
+            }))
     );
 
     const cancelButton = new ActionRowBuilder().addComponents(

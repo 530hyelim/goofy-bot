@@ -65,6 +65,20 @@ export function clearUserCollector(userId) {
     userCollectors.delete(userId);
 }
 
+/** 문제 출제 시 표시할 채점 기준 문구 */
+export async function getCriteriaHintForDisplay(answerType) {
+    const type = Math.min(4, Math.max(1, parseInt(answerType, 10) || 1));
+    const { data: critRow } = await supabase
+        .from('criteria')
+        .select('crit_name, criteria_hint')
+        .eq('crit_no', type)
+        .single();
+    const name = critRow?.crit_name?.trim() || '';
+    const hintText = (critRow?.criteria_hint && critRow.criteria_hint.trim()) ? critRow.criteria_hint.trim() : '';
+    if (!name || !hintText) return '';
+    return `채점 기준 (${name}): ${hintText}`;
+}
+
 export async function handleCommand(message) {
     if (message.author.bot) return;
     const content = message.content.trim();
@@ -77,33 +91,54 @@ export async function handleCommand(message) {
     }
 
     if (content.startsWith('.정답')) {
-        const userAnswer = content.slice(3).trim();
+        const userAnswer = content.replace(/^\.정답\s*/, '').trim();
         if (!userAnswer) return;
 
         try {
-            let 정답;
-            const answerArr = correctAnswer.answer.replace(/[\s\W_]+/g, ' ').split(' ');
+            let 정답 = false;
+            const correct = String(correctAnswer.answer ?? '').trim();
+            const user = String(userAnswer).trim();
+            const answerType = Math.min(4, Math.max(1, parseInt(correctAnswer.type, 10) || 1));
 
-            switch(correctAnswer.type) {
-                case 1: // 일치
-                    if (userAnswer == correctAnswer.answer.trim()) 정답 = true;
-                    else 정답 = false;
+            switch (answerType) {
+                case 1: { // 일치: 공백 제외한 모든 글자 일치
+                    const corrNorm = correct.replace(/\s/g, '');
+                    const userNorm = user.replace(/\s/g, '');
+                    정답 = corrNorm === userNorm;
                     break;
-                case 2: // 포함
-                    정답 = true;
-                    answerArr.forEach(answer => {
-                        if (!userAnswer.includes(answer)) 정답 = false;
-                    });
+                }
+                case 2: { // 포함: 정답 단어 중 하나가 유저 답에서 '단어 전체'로 있고, 유저 단어는 전부 정답에 있어야 함
+                    const toWords = (s) => String(s).replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ').split(/\s+/).filter(Boolean);
+                    const correctWords = toWords(correct);
+                    const userWords = toWords(user);
+                    const hasCorrectWord = correctWords.some((cw) => userWords.includes(cw));
+                    const onlyCorrectWords = userWords.every((uw) => correctWords.includes(uw));
+                    정답 = hasCorrectWord && onlyCorrectWords;
                     break;
-                case 3: // 동순
-                    정답 = true;
-                    let order = new Array();
-                    answerArr.forEach(answer => {
-                        order.push(userAnswer.indexOf(answer));
-                    });
-                    for (let i = 0; i < order.length - 1; i++) {
-                        if (order[i] > order[i + 1]) 정답 = false;
-                    }
+                }
+                case 3: { // 동순: 유저 토큰이 정답 토큰 시퀀스의 접두사여야 함 + 정답에 없는 글자 있으면 땡
+                    const toTokens = (s) =>
+                        String(s)
+                            .replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ')
+                            .split(/\s+/)
+                            .filter(Boolean);
+                    const correctTokens = toTokens(correct);
+                    const userTokens = toTokens(user);
+                    const prefixMatch =
+                        userTokens.length <= correctTokens.length &&
+                        userTokens.every((t, i) => t === correctTokens[i]);
+                    const noExtraChar = [...user].every((ch) => correct.includes(ch));
+                    정답 = prefixMatch && noExtraChar;
+                    break;
+                }
+                case 4: { // 서술: 정답의 모든 단어가 유저 답에 포함되어야 함
+                    const toWords = (s) => String(s).replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ').split(/\s+/).filter(Boolean);
+                    const correctWords = toWords(correct);
+                    정답 = correctWords.length > 0 && correctWords.every((w) => user.includes(w));
+                    break;
+                }
+                default:
+                    정답 = false;
                     break;
             }
 
