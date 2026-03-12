@@ -5,6 +5,7 @@ import { sendError, handleCommand, upsertGuildConfig, getGuildConfig, clearGuild
 import { initReactionRoles, handleReaction } from './services/reactionRoles.js';
 import { handleSetupInteraction } from './commands/setup.js';
 import { handleReportInteraction } from './commands/report.js';
+import { handleBroadcastModal } from './commands/announce.js';
 import { handleVoiceStateUpdate } from './services/voiceTracker.js';
 import { createClient } from '@supabase/supabase-js';
 import { Client, GatewayIntentBits, Partials, Collection, REST, Routes, ChannelType, PermissionFlagsBits, OverwriteType } from 'discord.js';
@@ -120,46 +121,76 @@ client.on('guildMemberAdd', async (member) => {
     }
 });
 
+const OWNER_ID = '1363221777278304577';
+
 async function loadCommands() { 
     const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js')); 
-    const slashCommandsData = [];
+    const publicCommandsData = [];
+    const ownerOnlyCommandsData = [];
 
     for (const file of commandFiles) { 
         try { 
             const { default: command } = await import(`./commands/${file}`); 
             if (command.data) {
                 client.slashCommands.set(command.data.name, command);
-                slashCommandsData.push(command.data.toJSON());
+                const json = command.data.toJSON();
+                if (command.ownerOnly) {
+                    ownerOnlyCommandsData.push(json);
+                } else {
+                    publicCommandsData.push(json);
+                }
             }
         } catch (error) { 
             sendError(`⚠️ ${file} 명령어 로딩 오류:`, error); 
         } 
     }
 
-    if (slashCommandsData.length === 0) return;
+    if (publicCommandsData.length === 0 && ownerOnlyCommandsData.length === 0) return;
     const rest = new REST({ version: '10' }).setToken(TOKEN);
 
-    // 모든 길드에 슬래시 커맨드 등록
+    // 전역 커맨드
+    if (publicCommandsData.length > 0) {
+        try {
+            await rest.put(Routes.applicationCommands(client.user.id), { body: publicCommandsData });
+        } catch (error) {
+            sendError(`⚠️ 전역 커맨드 등록 오류: ${error?.stack || error}`);
+        }
+    }
+
+    // 길드 커맨드: 서버장이 최고관리자인 길드에만 /announce 등록
+    if (ownerOnlyCommandsData.length > 0) {
+        for (const guild of client.guilds.cache.values()) {
+            try {
+                if (guild.ownerId != OWNER_ID) continue;
+                await rest.put(
+                    Routes.applicationGuildCommands(client.user.id, guild.id),
+                    { body: ownerOnlyCommandsData }
+                );
+                await upsertGuildConfig(guild.id, guild.name);
+            } catch (error) {
+                sendError(`⚠️ 슬래시 커맨드 등록 오류: ${error?.stack || error}`, guild.id);
+            }
+        }
+    }
+
+    // DB에는 모든 길드 설정 유지
     for (const guild of client.guilds.cache.values()) {
         try {
-            await rest.put(
-                Routes.applicationGuildCommands(client.user.id, guild.id),
-                { body: slashCommandsData }
-            );
-            // DB에 길드 설정이 없으면 생성
             await upsertGuildConfig(guild.id, guild.name);
-        } catch (error) {
-            sendError(`⚠️ 슬래시 커맨드 등록 오류: ${error?.stack || error}`, guild.id);
-        }
+        } catch (e) {}
     }
 }
 
-/** 새로 추가된 길드에 슬래시 커맨드 등록 (guildCreate에서 호출) */
+/** 새로 추가된 길드에 슬래시 커맨드 등록 (전역 커맨드는 자동 반영) */
 async function registerCommandsForGuild(guildId) {
-    const slashCommandsData = Array.from(client.slashCommands.values()).map((c) => c.data.toJSON());
-    if (slashCommandsData.length === 0) return;
+    const guild = client.guilds.cache.get(guildId);
+    if (!guild || guild.ownerId != OWNER_ID) return;
+    const ownerOnlyCommandsData = Array.from(client.slashCommands.values())
+        .filter((c) => c.ownerOnly)
+        .map((c) => c.data.toJSON());
+    if (ownerOnlyCommandsData.length === 0) return;
     const rest = new REST({ version: '10' }).setToken(TOKEN);
-    await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: slashCommandsData });
+    await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: ownerOnlyCommandsData });
 }
 
 client.on('messageCreate', (message) => handleCommand(message, client));
@@ -176,6 +207,10 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
         const customId = interaction.customId || '';
+        if (interaction.isModalSubmit() && customId == 'announcementModal') {
+            await handleBroadcastModal(interaction);
+            return;
+        }
         if (customId.startsWith('report')) {
             await handleReportInteraction(interaction);
             return;

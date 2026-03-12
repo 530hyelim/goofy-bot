@@ -67,7 +67,7 @@ export function clearUserCollector(userId) {
 
 /** 문제 출제 시 표시할 채점 기준 문구 */
 export async function getCriteriaHintForDisplay(answerType) {
-    const type = Math.min(4, Math.max(1, parseInt(answerType, 10) || 1));
+    const type = Math.min(5, Math.max(1, parseInt(answerType, 10) || 1));
     const { data: critRow } = await supabase
         .from('criteria')
         .select('crit_name, criteria_hint')
@@ -98,17 +98,17 @@ export async function handleCommand(message) {
             let 정답 = false;
             const correct = String(correctAnswer.answer ?? '').trim();
             const user = String(userAnswer).trim();
-            const answerType = Math.min(4, Math.max(1, parseInt(correctAnswer.type, 10) || 1));
+            const answerType = Math.min(5, Math.max(1, parseInt(correctAnswer.type, 10) || 1));
 
             switch (answerType) {
                 case 1: { // 일치: 공백 제외한 모든 글자 일치
-                    const corrNorm = correct.replace(/\s/g, '');
-                    const userNorm = user.replace(/\s/g, '');
+                    const corrNorm = correct.replace(/\s/g, '').toLowerCase();
+                    const userNorm = user.replace(/\s/g, '').toLowerCase();
                     정답 = corrNorm === userNorm;
                     break;
                 }
                 case 2: { // 포함: 정답 단어 중 하나가 유저 답에서 '단어 전체'로 있고, 유저 단어는 전부 정답에 있어야 함
-                    const toWords = (s) => String(s).replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ').split(/\s+/).filter(Boolean);
+                    const toWords = (s) => String(s).replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ').split(/\s+/).filter(Boolean).map((w) => w.toLowerCase());
                     const correctWords = toWords(correct);
                     const userWords = toWords(user);
                     const hasCorrectWord = correctWords.some((cw) => userWords.includes(cw));
@@ -121,20 +121,30 @@ export async function handleCommand(message) {
                         String(s)
                             .replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ')
                             .split(/\s+/)
-                            .filter(Boolean);
-                    const correctTokens = toTokens(correct);
-                    const userTokens = toTokens(user);
+                            .filter(Boolean)
+                            .map((t) => t.toLowerCase());
+                    const correctLower = correct.toLowerCase();
+                    const userLower = user.toLowerCase();
+                    const correctTokens = toTokens(correctLower);
+                    const userTokens = toTokens(userLower);
                     const prefixMatch =
                         userTokens.length <= correctTokens.length &&
                         userTokens.every((t, i) => t === correctTokens[i]);
-                    const noExtraChar = [...user].every((ch) => correct.includes(ch));
+                    const noExtraChar = [...userLower].every((ch) => correctLower.includes(ch));
                     정답 = prefixMatch && noExtraChar;
                     break;
                 }
                 case 4: { // 서술: 정답의 모든 단어가 유저 답에 포함되어야 함
-                    const toWords = (s) => String(s).replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ').split(/\s+/).filter(Boolean);
+                    const toWords = (s) => String(s).replace(/[^\s0-9가-힣ㄱ-ㅎㅏ-ㅣA-Za-z]/g, ' ').split(/\s+/).filter(Boolean).map((w) => w.toLowerCase());
                     const correctWords = toWords(correct);
-                    정답 = correctWords.length > 0 && correctWords.every((w) => user.includes(w));
+                    const userLower = user.toLowerCase();
+                    정답 = correctWords.length > 0 && correctWords.every((w) => userLower.includes(w));
+                    break;
+                }
+                case 5: { // Case Sensitive: 대소문자 구분 (공백 제외한 모든 글자 일치)
+                    const corrNorm = correct.replace(/\s/g, '');
+                    const userNorm = user.replace(/\s/g, '');
+                    정답 = corrNorm === userNorm;
                     break;
                 }
                 default:

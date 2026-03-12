@@ -36,12 +36,12 @@ function isOwner(interaction) {
 export default {
     data: new SlashCommandBuilder()
         .setName('setup')
-        .setDescription('서버 설정 패널 열기')
+        .setDescription('[관리자] 서버 설정 패널 열기')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
         if (!isOwner(interaction)) {
-            return interaction.reply({ content: '❌ 서버 설정은 서버장만 할 수 있습니다.', flags: 64 });
+            return interaction.reply({ content: '❌ 서버 설정은 관리자만 할 수 있습니다.', flags: 64 });
         }
         await showMainMenu(interaction);
     }
@@ -87,7 +87,7 @@ export async function handleSetupInteraction(interaction) {
     const guildName = interaction.guild.name;
 
     if (!isOwner(interaction)) {
-        return interaction.reply({ content: '❌ 서버 설정은 서버장만 할 수 있습니다.', flags: 64 });
+        return interaction.reply({ content: '❌ 서버 설정은 관리자만 할 수 있습니다.', flags: 64 });
     }
 
     try {
