@@ -20,7 +20,7 @@ export default {
     ownerOnly: true,
     data: new SlashCommandBuilder()
         .setName('announce')
-        .setDescription('[최고 관리자] 전체 공지사항'),
+        .setDescription('전체 공지'),
 
     async execute(interaction) {
         if (!isSuperAdmin(interaction.user.id)) {

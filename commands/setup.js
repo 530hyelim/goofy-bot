@@ -36,7 +36,7 @@ function isOwner(interaction) {
 export default {
     data: new SlashCommandBuilder()
         .setName('setup')
-        .setDescription('[관리자] 서버 설정 패널 열기')
+        .setDescription('서버 설정')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
 
     async execute(interaction) {
