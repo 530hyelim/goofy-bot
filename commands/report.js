@@ -7,7 +7,7 @@ import {
     TextInputBuilder,
     TextInputStyle,
 } from 'discord.js';
-import { getGuildConfig, sendError } from '../commonFunc.js';
+import { getGuildConfig, sendError } from '../utils/commonFunc.js';
 import { client } from '../index.js';
 
 const REPORT_TYPE = {
@@ -135,7 +135,7 @@ async function sendReportToLog(sourceGuildId, content) {
         if (logChannel) {
             await logChannel.send(content + withSource);
         } else {
-            await sendError(`[Report] 로그 채널이 설정되지 않았습니다. (guild: ${REPORT_LOG_GUILD_ID})\n${content}`, sourceGuildId);
+            await sendError(`[Report] 전송에 실패하였습니다.\n\n${content}`, sourceGuildId);
         }
     } catch (err) {
         await sendError(`⚠️ report.js sendReportToLog: ${err?.stack || err}`, sourceGuildId);

@@ -1,7 +1,7 @@
 import 'dotenv/config';
-import { client } from './index.js';
-import { supabase } from './index.js';
-import { getCorrectAnswer, resetCorrectAnswer } from './commands/question.js';
+import { client } from '../index.js';
+import { supabase } from '../index.js';
+import { getCorrectAnswer, resetCorrectAnswer } from '../commands/question.js';
 
 const userCollectors = new Map();
 const guildConfigCache = new Map();

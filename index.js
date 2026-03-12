@@ -1,11 +1,11 @@
 import fs from 'fs';
 import express from 'express';
-import { startCrons } from './crons.js';
-import { sendError, handleCommand, upsertGuildConfig, getGuildConfig, clearGuildConfigCache } from './commonFunc.js';
-import { initReactionRoles, handleReaction } from './reactionRoles.js';
+import { startCrons } from './services/crons.js';
+import { sendError, handleCommand, upsertGuildConfig, getGuildConfig, clearGuildConfigCache } from './utils/commonFunc.js';
+import { initReactionRoles, handleReaction } from './services/reactionRoles.js';
 import { handleSetupInteraction } from './commands/setup.js';
 import { handleReportInteraction } from './commands/report.js';
-import { handleVoiceStateUpdate } from './voiceTracker.js';
+import { handleVoiceStateUpdate } from './services/voiceTracker.js';
 import { createClient } from '@supabase/supabase-js';
 import { Client, GatewayIntentBits, Partials, Collection, REST, Routes, ChannelType, PermissionFlagsBits, OverwriteType } from 'discord.js';
 import dotenv from 'dotenv';
@@ -90,12 +90,12 @@ client.on('guildCreate', async (guild) => {
                     study_room_id: studyRoomCh.id,
                 });
                 clearGuildConfigCache(guild.id);
-                sendError(`✅ 새 서버 추가: ${guild.name} (${guild.id})`, guild.id);
+                sendError(`🤖: 저를 ${guild.name}에 초대해주셔서 감사해요!`, guild.id);
             } catch (channelErr) {
                 sendError(`⚠️ ${guild.name} 채널 자동 생성 실패 (권한 확인): ${channelErr?.stack || channelErr}`, guild.id);
             }
         } else {
-            sendError(`✅ 서버 입장: ${guild.name} (${guild.id})`, guild.id);
+            sendError(`🤖: 다시 만나서 반가워요!`, guild.id);
         }
     } catch (err) {
         sendError(`⚠️ 서버 설정 저장 실패: ${err?.stack || err}`, guild.id);

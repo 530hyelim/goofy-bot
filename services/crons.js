@@ -1,8 +1,8 @@
 import cron from 'node-cron';
-import { client } from './index.js';
-import { supabase } from './index.js';
-import { sendError, getAllGuildConfigs } from './commonFunc.js';
-import { getRankString } from './commands/ranking.js';
+import { client } from '../index.js';
+import { supabase } from '../index.js';
+import { sendError, getAllGuildConfigs } from '../utils/commonFunc.js';
+import { getRankString } from '../commands/ranking.js';
 import { getWeeklyStudyTime, getWeeklyStudyReport, saveAllActiveSessions } from './voiceTracker.js';
 
 export function startCrons() {

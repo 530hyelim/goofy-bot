@@ -3,8 +3,8 @@ import { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuild
     RoleSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ChannelType, StringSelectMenuBuilder, parseEmoji
 } from 'discord.js';
 import { supabase } from '../index.js';
-import { sendError, getGuildConfig, upsertGuildConfig, clearGuildConfigCache } from '../commonFunc.js';
-import { updateRoleMessage, clearReactionRolesCache } from '../reactionRoles.js';
+import { sendError, getGuildConfig, upsertGuildConfig, clearGuildConfigCache } from '../utils/commonFunc.js';
+import { updateRoleMessage, clearReactionRolesCache } from '../services/reactionRoles.js';
 
 function isValidEmoji(str) {
     const parsed = parseEmoji(str);

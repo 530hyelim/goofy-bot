@@ -1,6 +1,6 @@
 import { EmbedBuilder } from 'discord.js';
-import { supabase } from './index.js';
-import { sendError, getGuildConfig } from './commonFunc.js';
+import { supabase } from '../index.js';
+import { sendError, getGuildConfig } from '../utils/commonFunc.js';
 
 const voiceSessions = new Map();
 

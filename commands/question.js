@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { supabase, client } from '../index.js';
 import { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { setUserCollector, clearUserCollector, sendError, getCriteriaHintForDisplay } from '../commonFunc.js';
+import { setUserCollector, clearUserCollector, sendError, getCriteriaHintForDisplay } from '../utils/commonFunc.js';
 
 let correctAnswer;
 let questionExpiryTimeoutId = null;

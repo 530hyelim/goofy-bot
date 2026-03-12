@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { supabase, client } from '../index.js';
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
-import { sendError } from '../commonFunc.js';
+import { sendError } from '../utils/commonFunc.js';
 
 export async function getRankString(guildId) {
     const { data: ranking, error: qErr } = await supabase

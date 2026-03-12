@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { supabase } from '../index.js';
 import { ActionRowBuilder, StringSelectMenuBuilder, SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { setUserCollector, clearUserCollector, sendError, upsertUserScore } from '../commonFunc.js';
+import { setUserCollector, clearUserCollector, sendError, upsertUserScore } from '../utils/commonFunc.js';
 
 const MODAL_CUSTOM_ID = 'questionModal_register';
 
